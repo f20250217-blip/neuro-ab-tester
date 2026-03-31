@@ -260,11 +260,11 @@ export function compareAnalyses(a: NeuralAnalysis, b: NeuralAnalysis): Compariso
     const diff = regionA.activation - regionB.activation;
     let insight = "";
     if (Math.abs(diff) < 0.1) {
-      insight = "Similar activation levels";
+      insight = "Both are about equal here";
     } else if (diff > 0) {
-      insight = `Content A triggers ${regionA.name} ${Math.round(diff * 100)}% more strongly`;
+      insight = `Content A is ${Math.round(diff * 100)}% stronger at ${regionA.name}`;
     } else {
-      insight = `Content B triggers ${regionB.name} ${Math.round(Math.abs(diff) * 100)}% more strongly`;
+      insight = `Content B is ${Math.round(Math.abs(diff) * 100)}% stronger at ${regionB.name}`;
     }
     return {
       region: regionA.name,
@@ -279,11 +279,11 @@ export function compareAnalyses(a: NeuralAnalysis, b: NeuralAnalysis): Compariso
     contentA: a,
     contentB: b,
     winner,
-    winnerReason: `Content ${winner} (${winnerAnalysis.label}) triggers a stronger overall neural response with a score of ${winnerAnalysis.overallScore}/10 vs ${winner === "A" ? b.overallScore : a.overallScore}/10`,
+    winnerReason: `${winnerAnalysis.label} is the stronger content overall, scoring ${winnerAnalysis.overallScore}/10 compared to ${winner === "A" ? b.overallScore : a.overallScore}/10. It's more likely to grab attention, create an emotional connection, and drive action from viewers.`,
     recommendations: [
       ...winnerAnalysis.recommendations.slice(0, 3),
     ],
-    detailedComparison: `Comparative neural activation analysis complete. Content ${winner} demonstrates superior engagement across key brain regions.`,
+    detailedComparison: `Content ${winner} is more engaging overall and is more likely to convert viewers into customers.`,
     regionComparison,
   };
 }

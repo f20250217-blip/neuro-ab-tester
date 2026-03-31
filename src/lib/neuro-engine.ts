@@ -53,18 +53,18 @@ export interface ComparisonResult {
 
 // Default brain regions for neural mapping
 export const BRAIN_REGIONS: Omit<BrainRegion, "activation" | "color">[] = [
-  { name: "Prefrontal Cortex", id: "pfc", role: "Decision making, planning, rational thought", position: [0, 0.8, 1.2] },
-  { name: "Amygdala", id: "amygdala", role: "Emotional processing, fear, excitement", position: [0.4, -0.2, 0.3] },
-  { name: "Hippocampus", id: "hippocampus", role: "Memory formation, recall, learning", position: [0.5, -0.3, 0] },
-  { name: "Visual Cortex", id: "visual", role: "Visual processing, imagery, pattern recognition", position: [0, -0.5, -1.2] },
-  { name: "Auditory Cortex", id: "auditory", role: "Sound processing, speech comprehension", position: [1.2, 0, 0] },
-  { name: "Broca's Area", id: "broca", role: "Language production, speech processing", position: [-0.8, 0.5, 0.8] },
-  { name: "Wernicke's Area", id: "wernicke", role: "Language comprehension, meaning extraction", position: [-1.1, 0.2, -0.2] },
-  { name: "Nucleus Accumbens", id: "nac", role: "Reward, pleasure, motivation, desire", position: [0, 0.1, 0.6] },
-  { name: "Insula", id: "insula", role: "Empathy, social awareness, gut feelings", position: [0.8, 0.2, 0.2] },
-  { name: "Anterior Cingulate", id: "acc", role: "Attention, conflict monitoring, focus", position: [0, 0.6, 0.5] },
-  { name: "Motor Cortex", id: "motor", role: "Action impulse, physical response urge", position: [0, 1.0, 0.3] },
-  { name: "Temporal Pole", id: "temporal", role: "Narrative comprehension, social context", position: [1.0, -0.3, 0.8] },
+  { name: "Decision Making", id: "pfc", role: "Helps viewers decide to take action", position: [0, 0.8, 1.2] },
+  { name: "Emotions", id: "amygdala", role: "Creates feelings like excitement or urgency", position: [0.4, -0.2, 0.3] },
+  { name: "Memory", id: "hippocampus", role: "Makes content stick in people's minds", position: [0.5, -0.3, 0] },
+  { name: "Visual Appeal", id: "visual", role: "How eye-catching the visuals are", position: [0, -0.5, -1.2] },
+  { name: "Sound Quality", id: "auditory", role: "How well audio and voice work", position: [1.2, 0, 0] },
+  { name: "Word Power", id: "broca", role: "Strength of the words and phrases used", position: [-0.8, 0.5, 0.8] },
+  { name: "Clarity", id: "wernicke", role: "How easy the message is to understand", position: [-1.1, 0.2, -0.2] },
+  { name: "Desire", id: "nac", role: "Makes viewers want the product or outcome", position: [0, 0.1, 0.6] },
+  { name: "Trust", id: "insula", role: "Builds credibility and authenticity", position: [0.8, 0.2, 0.2] },
+  { name: "Attention", id: "acc", role: "Keeps people watching and focused", position: [0, 0.6, 0.5] },
+  { name: "Urge to Act", id: "motor", role: "Drives clicks, signups, and purchases", position: [0, 1.0, 0.3] },
+  { name: "Storytelling", id: "temporal", role: "How well the narrative connects", position: [1.0, -0.3, 0.8] },
 ];
 
 export function getActivationColor(activation: number): string {

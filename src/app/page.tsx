@@ -171,40 +171,40 @@ export default function Home() {
       {/* ==================== PROCESSING STATE ==================== */}
       {state === "processing" && (
         <main className="max-w-3xl mx-auto px-6 py-12">
-          <div className="text-center space-y-6">
-            {/* Animated brain during processing */}
-            <div className="relative mx-auto" style={{ height: 280 }}>
-              <HeroBrain />
-              {/* Scanning overlay */}
-              <div className="absolute inset-0 pointer-events-none overflow-hidden rounded-xl">
-                <div className="absolute inset-x-0 h-1 bg-gradient-to-r from-transparent via-[#6c5ce7] to-transparent scan-animation opacity-60" />
+          <div className="text-center space-y-8">
+            {/* Smaller brain with scanning effect */}
+            <div className="relative mx-auto w-40 h-40">
+              <div className="w-40 h-40 rounded-full bg-gradient-to-br from-[#6c5ce7]/20 to-[#00d2a0]/20 flex items-center justify-center animate-pulse">
+                <svg className="w-20 h-20 text-[#6c5ce7]" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z" />
+                </svg>
               </div>
             </div>
 
             <div>
-              <h2 className="text-2xl font-bold text-[#e8e8f0] mb-2">Analyzing Neural Response</h2>
-              <p className="text-[#8888a8] text-sm">
-                {progress < 20 && "Extracting video frames..."}
-                {progress >= 20 && progress < 40 && "Transcribing audio with Whisper..."}
-                {progress >= 40 && progress < 60 && "Analyzing 37 content dimensions..."}
-                {progress >= 60 && progress < 80 && "Mapping activations across 12 brain regions..."}
-                {progress >= 80 && progress < 95 && "Generating neural comparison report..."}
-                {progress >= 95 && "Finalizing..."}
+              <h2 className="text-2xl font-bold text-[#e8e8f0] mb-2">Analyzing Your Content</h2>
+              <p className="text-[#8888a8] text-base">
+                {progress < 20 && "Downloading your content..."}
+                {progress >= 20 && progress < 40 && "Reading text & listening to audio..."}
+                {progress >= 40 && progress < 60 && "Checking what makes it engaging..."}
+                {progress >= 60 && progress < 80 && "Scoring emotions, visuals & persuasion..."}
+                {progress >= 80 && progress < 95 && "Building your comparison report..."}
+                {progress >= 95 && "Almost done..."}
               </p>
             </div>
 
             <div className="max-w-md mx-auto space-y-2">
               <div className="flex justify-between text-xs">
-                <span className="text-[#8888a8]">Neural mapping progress</span>
+                <span className="text-[#8888a8]">Progress</span>
                 <span className="text-[#6c5ce7] font-mono">{Math.round(progress)}%</span>
               </div>
-              <div className="h-1.5 bg-[#1a1a2e] rounded-full overflow-hidden">
+              <div className="h-2 bg-[#1a1a2e] rounded-full overflow-hidden">
                 <div className="h-full rounded-full transition-all duration-500" style={{ width: `${progress}%`, background: "linear-gradient(90deg, #6c5ce7, #00d2a0)" }} />
               </div>
             </div>
 
             <div className="grid grid-cols-5 gap-3 max-w-lg mx-auto mt-6">
-              {["Frames", "Audio", "Features", "Brain Map", "Report"].map((step, i) => (
+              {["Download", "Listen", "Analyze", "Score", "Report"].map((step, i) => (
                 <div key={step} className="text-center">
                   <div className={`w-9 h-9 mx-auto rounded-full flex items-center justify-center text-xs font-bold mb-1.5 transition-all duration-500
                     ${progress > (i + 1) * 18 ? "bg-[#00d2a0] text-black scale-100" : progress > i * 18 ? "bg-[#6c5ce7] text-white animate-pulse scale-110" : "bg-[#1a1a2e] text-[#555] scale-90"}`}>
@@ -231,16 +231,16 @@ export default function Home() {
               </div>
               <div className="flex-1">
                 <h3 className="text-lg font-bold text-[#e8e8f0]">
-                  {result.winner === "A" ? result.contentA.label : result.contentB.label} triggers a stronger neural response
+                  {result.winner === "A" ? result.contentA.label : result.contentB.label} performs better
                 </h3>
                 <p className="text-sm text-[#8888a8] mt-0.5">
                   Score: {result.winner === "A" ? result.contentA.overallScore : result.contentB.overallScore}/10 vs {result.winner === "A" ? result.contentB.overallScore : result.contentA.overallScore}/10
                 </p>
               </div>
               <div className="hidden md:flex gap-4">
-                <MiniStat label="Emotional" valueA={result.contentA.emotionalImpact} valueB={result.contentB.emotionalImpact} />
-                <MiniStat label="Memory" valueA={result.contentA.memoryRetention} valueB={result.contentB.memoryRetention} />
-                <MiniStat label="Decision" valueA={result.contentA.decisionTrigger} valueB={result.contentB.decisionTrigger} />
+                <MiniStat label="Feels" valueA={result.contentA.emotionalImpact} valueB={result.contentB.emotionalImpact} />
+                <MiniStat label="Sticks" valueA={result.contentA.memoryRetention} valueB={result.contentB.memoryRetention} />
+                <MiniStat label="Converts" valueA={result.contentA.decisionTrigger} valueB={result.contentB.decisionTrigger} />
               </div>
             </div>
           </div>
@@ -248,10 +248,10 @@ export default function Home() {
           {/* Tab Navigation */}
           <div className="flex gap-1 bg-[#12121a] rounded-xl p-1 border border-[#2a2a4a]">
             {[
-              { id: "overview" as const, label: "Brain Map Overview" },
-              { id: "regions" as const, label: "Region Comparison" },
-              { id: "detailed" as const, label: "Detailed Analysis" },
-              { id: "recommendations" as const, label: "Recommendations" },
+              { id: "overview" as const, label: "Overview" },
+              { id: "regions" as const, label: "Score Breakdown" },
+              { id: "detailed" as const, label: "Deep Dive" },
+              { id: "recommendations" as const, label: "How to Improve" },
             ].map((tab) => (
               <button key={tab.id} onClick={() => setActiveTab(tab.id)}
                 className={`flex-1 py-2.5 px-4 rounded-lg text-sm font-medium transition-all
@@ -272,14 +272,14 @@ export default function Home() {
 
               {/* Quick Scores Comparison */}
               <div className="bg-[#12121a] border border-[#2a2a4a] rounded-2xl p-6">
-                <h3 className="text-sm font-medium text-[#8888a8] uppercase tracking-wider mb-4">Score Comparison</h3>
+                <h3 className="text-sm font-medium text-[#8888a8] uppercase tracking-wider mb-4">How They Compare</h3>
                 <div className="space-y-4">
                   {[
-                    { label: "Emotional Impact", a: result.contentA.emotionalImpact, b: result.contentB.emotionalImpact },
-                    { label: "Memory Retention", a: result.contentA.memoryRetention, b: result.contentB.memoryRetention },
-                    { label: "Decision Trigger", a: result.contentA.decisionTrigger, b: result.contentB.decisionTrigger },
-                    { label: "Attention Capture", a: result.contentA.attentionCapture, b: result.contentB.attentionCapture },
-                    { label: "Trust Building", a: result.contentA.trustBuilding, b: result.contentB.trustBuilding },
+                    { label: "Makes You Feel Something", a: result.contentA.emotionalImpact, b: result.contentB.emotionalImpact },
+                    { label: "Sticks in Your Mind", a: result.contentA.memoryRetention, b: result.contentB.memoryRetention },
+                    { label: "Makes You Want to Act", a: result.contentA.decisionTrigger, b: result.contentB.decisionTrigger },
+                    { label: "Grabs Your Attention", a: result.contentA.attentionCapture, b: result.contentB.attentionCapture },
+                    { label: "Builds Trust", a: result.contentA.trustBuilding, b: result.contentB.trustBuilding },
                   ].map((row) => (
                     <div key={row.label} className="flex items-center gap-4">
                       <span className="text-xs font-mono text-[#6c5ce7] w-8 text-right">{row.a.toFixed(1)}</span>
@@ -300,7 +300,7 @@ export default function Home() {
           {/* ---- REGIONS TAB ---- */}
           {activeTab === "regions" && (
             <div className="bg-[#12121a] border border-[#2a2a4a] rounded-2xl p-6">
-              <h3 className="text-sm font-medium text-[#8888a8] uppercase tracking-wider mb-4">Region-by-Region Neural Activation</h3>
+              <h3 className="text-sm font-medium text-[#8888a8] uppercase tracking-wider mb-4">Detailed Score Breakdown</h3>
               <RegionTable rows={result.regionComparison} />
             </div>
           )}
@@ -341,7 +341,7 @@ export default function Home() {
                 <div className="flex items-start gap-3 mb-4">
                   <div className={`w-8 h-8 rounded-lg flex items-center justify-center text-sm font-bold flex-shrink-0 ${result.winner === "A" ? "bg-[#6c5ce7]" : "bg-[#00d2a0] text-black"}`}>!</div>
                   <div>
-                    <h4 className="font-medium text-[#e8e8f0]">Key Insight</h4>
+                    <h4 className="font-medium text-[#e8e8f0]">The Bottom Line</h4>
                     <p className="text-sm text-[#8888a8] mt-1">{result.winnerReason}</p>
                   </div>
                 </div>
@@ -349,7 +349,7 @@ export default function Home() {
 
               <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
                 <div className="bg-[#12121a] border border-[#2a2a4a] rounded-2xl p-5">
-                  <h4 className="text-xs font-medium text-[#6c5ce7] uppercase tracking-wider mb-4">How to improve {result.contentA.label}</h4>
+                  <h4 className="text-xs font-medium text-[#6c5ce7] uppercase tracking-wider mb-4">Tips for {result.contentA.label}</h4>
                   <ul className="space-y-3">
                     {result.contentA.recommendations.map((rec, i) => (
                       <li key={i} className="flex gap-3 text-sm">
@@ -360,7 +360,7 @@ export default function Home() {
                   </ul>
                 </div>
                 <div className="bg-[#12121a] border border-[#2a2a4a] rounded-2xl p-5">
-                  <h4 className="text-xs font-medium text-[#00d2a0] uppercase tracking-wider mb-4">How to improve {result.contentB.label}</h4>
+                  <h4 className="text-xs font-medium text-[#00d2a0] uppercase tracking-wider mb-4">Tips for {result.contentB.label}</h4>
                   <ul className="space-y-3">
                     {result.contentB.recommendations.map((rec, i) => (
                       <li key={i} className="flex gap-3 text-sm">
@@ -417,11 +417,11 @@ function BrainCard({ analysis, color, label }: { analysis: NeuralAnalysis; color
 
       {/* Score bars */}
       <div className="p-4 space-y-2.5">
-        <ScoreBar label="Emotional Impact" score={analysis.emotionalImpact} color={color} />
-        <ScoreBar label="Memory Retention" score={analysis.memoryRetention} color={color} />
-        <ScoreBar label="Decision Trigger" score={analysis.decisionTrigger} color={color} />
-        <ScoreBar label="Attention Capture" score={analysis.attentionCapture} color={color} />
-        <ScoreBar label="Trust Building" score={analysis.trustBuilding} color={color} />
+        <ScoreBar label="Emotional Pull" score={analysis.emotionalImpact} color={color} />
+        <ScoreBar label="Memorability" score={analysis.memoryRetention} color={color} />
+        <ScoreBar label="Call to Action" score={analysis.decisionTrigger} color={color} />
+        <ScoreBar label="Attention Grab" score={analysis.attentionCapture} color={color} />
+        <ScoreBar label="Trust Factor" score={analysis.trustBuilding} color={color} />
       </div>
     </div>
   );
@@ -430,19 +430,19 @@ function BrainCard({ analysis, color, label }: { analysis: NeuralAnalysis; color
 function DetailPanel({ analysis, color }: { analysis: NeuralAnalysis; color: string }) {
   return (
     <div className="bg-[#12121a] border border-[#2a2a4a] rounded-2xl p-5 space-y-4">
-      <h4 className="text-xs font-medium uppercase tracking-wider" style={{ color }}>{analysis.label} — Neural Response Analysis</h4>
+      <h4 className="text-xs font-medium uppercase tracking-wider" style={{ color }}>{analysis.label} — What We Found</h4>
 
       <p className="text-sm text-[#999] leading-relaxed">{analysis.detailedAnalysis}</p>
 
       <div className="grid grid-cols-1 gap-3">
-        <AnalysisSection title="Visual Processing" text={analysis.visualAnalysis} />
-        <AnalysisSection title="Auditory Processing" text={analysis.audioAnalysis} />
-        <AnalysisSection title="Temporal Pacing" text={analysis.pacingAnalysis} />
+        <AnalysisSection title="How It Looks" text={analysis.visualAnalysis} />
+        <AnalysisSection title="How It Sounds" text={analysis.audioAnalysis} />
+        <AnalysisSection title="Flow & Pacing" text={analysis.pacingAnalysis} />
       </div>
 
       {/* Emotion Grid */}
       <div>
-        <h5 className="text-xs font-medium text-[#e8e8f0] mb-2">Emotion Activation</h5>
+        <h5 className="text-xs font-medium text-[#e8e8f0] mb-2">Emotions Triggered</h5>
         <div className="grid grid-cols-3 gap-2">
           {Object.entries(analysis.emotionBreakdown).map(([emotion, value]) => (
             <div key={emotion} className="bg-[#0a0a0f] rounded-lg p-2.5 text-center border border-[#2a2a4a]/50">
