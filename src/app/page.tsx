@@ -171,13 +171,15 @@ export default function Home() {
       {/* ==================== PROCESSING STATE ==================== */}
       {state === "processing" && (
         <main className="max-w-3xl mx-auto px-6">
-          {/* Brain animation - full width, no overlap */}
-          <div className="relative mx-auto" style={{ height: 300 }}>
-            <HeroBrain />
+          {/* Brain animation - contained, no overflow */}
+          <div className="relative mx-auto overflow-hidden rounded-2xl" style={{ height: 220, maxWidth: 400 }}>
+            <div className="pointer-events-none">
+              <HeroBrain />
+            </div>
           </div>
 
           {/* All text content clearly below the brain */}
-          <div className="text-center space-y-6 mt-4">
+          <div className="text-center space-y-6 mt-6">
             <div>
               <h2 className="text-2xl font-bold text-[#e8e8f0] mb-2">Analyzing Your Content</h2>
               <p className="text-[#8888a8] text-base">
