@@ -304,7 +304,7 @@ async function aiAnalysis(
   parts.push({ text: contextText + ANALYSIS_PROMPT });
 
   // Try multiple models with fallback if rate-limited
-  const models = ["gemini-2.0-flash", "gemini-1.5-flash", "gemini-2.0-flash-lite"];
+  const models = ["gemini-2.0-flash", "gemini-2.0-flash-lite", "gemini-1.5-flash-latest"];
   let responseText = "";
   let lastError: Error | null = null;
 
