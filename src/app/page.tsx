@@ -170,48 +170,48 @@ export default function Home() {
 
       {/* ==================== PROCESSING STATE ==================== */}
       {state === "processing" && (
-        <main className="max-w-3xl mx-auto px-6">
-          {/* Brain animation - contained, no overflow */}
-          <div className="relative mx-auto overflow-hidden rounded-2xl" style={{ height: 220, maxWidth: 400 }}>
-            <div className="pointer-events-none">
-              <HeroBrain />
-            </div>
+        <main className="fixed inset-0 top-[52px] flex flex-col">
+          {/* Brain fills the top area */}
+          <div className="flex-1 pointer-events-none">
+            <HeroBrain />
           </div>
 
-          {/* All text content clearly below the brain */}
-          <div className="text-center space-y-6 mt-6">
-            <div>
-              <h2 className="text-2xl font-bold text-[#e8e8f0] mb-2">Analyzing Your Content</h2>
-              <p className="text-[#8888a8] text-base">
-                {progress < 20 && "Downloading your content..."}
-                {progress >= 20 && progress < 40 && "Reading text & listening to audio..."}
-                {progress >= 40 && progress < 60 && "Checking what makes it engaging..."}
-                {progress >= 60 && progress < 80 && "Scoring emotions, visuals & persuasion..."}
-                {progress >= 80 && progress < 95 && "Building your comparison report..."}
-                {progress >= 95 && "Almost done..."}
-              </p>
-            </div>
-
-            <div className="max-w-md mx-auto space-y-2">
-              <div className="flex justify-between text-xs">
-                <span className="text-[#8888a8]">Progress</span>
-                <span className="text-[#6c5ce7] font-mono">{Math.round(progress)}%</span>
+          {/* Text pinned at bottom */}
+          <div className="bg-gradient-to-t from-[#0a0a0f] via-[#0a0a0f] to-transparent pt-8 pb-8 px-6">
+            <div className="max-w-lg mx-auto text-center space-y-5">
+              <div>
+                <h2 className="text-xl font-bold text-[#e8e8f0] mb-1">Analyzing Your Content</h2>
+                <p className="text-[#8888a8] text-sm">
+                  {progress < 20 && "Downloading your content..."}
+                  {progress >= 20 && progress < 40 && "Reading text & listening to audio..."}
+                  {progress >= 40 && progress < 60 && "Checking what makes it engaging..."}
+                  {progress >= 60 && progress < 80 && "Scoring emotions, visuals & persuasion..."}
+                  {progress >= 80 && progress < 95 && "Building your comparison report..."}
+                  {progress >= 95 && "Almost done..."}
+                </p>
               </div>
-              <div className="h-2 bg-[#1a1a2e] rounded-full overflow-hidden">
-                <div className="h-full rounded-full transition-all duration-500" style={{ width: `${progress}%`, background: "linear-gradient(90deg, #6c5ce7, #00d2a0)" }} />
-              </div>
-            </div>
 
-            <div className="grid grid-cols-5 gap-3 max-w-lg mx-auto">
-              {["Download", "Listen", "Analyze", "Score", "Report"].map((step, i) => (
-                <div key={step} className="text-center">
-                  <div className={`w-9 h-9 mx-auto rounded-full flex items-center justify-center text-xs font-bold mb-1.5 transition-all duration-500
-                    ${progress > (i + 1) * 18 ? "bg-[#00d2a0] text-black scale-100" : progress > i * 18 ? "bg-[#6c5ce7] text-white animate-pulse scale-110" : "bg-[#1a1a2e] text-[#555] scale-90"}`}>
-                    {progress > (i + 1) * 18 ? "\u2713" : i + 1}
-                  </div>
-                  <span className="text-[10px] text-[#8888a8]">{step}</span>
+              <div className="space-y-1.5">
+                <div className="flex justify-between text-xs">
+                  <span className="text-[#8888a8]">Progress</span>
+                  <span className="text-[#6c5ce7] font-mono">{Math.round(progress)}%</span>
                 </div>
-              ))}
+                <div className="h-1.5 bg-[#1a1a2e] rounded-full overflow-hidden">
+                  <div className="h-full rounded-full transition-all duration-500" style={{ width: `${progress}%`, background: "linear-gradient(90deg, #6c5ce7, #00d2a0)" }} />
+                </div>
+              </div>
+
+              <div className="grid grid-cols-5 gap-3">
+                {["Download", "Listen", "Analyze", "Score", "Report"].map((step, i) => (
+                  <div key={step} className="text-center">
+                    <div className={`w-8 h-8 mx-auto rounded-full flex items-center justify-center text-xs font-bold mb-1 transition-all duration-500
+                      ${progress > (i + 1) * 18 ? "bg-[#00d2a0] text-black scale-100" : progress > i * 18 ? "bg-[#6c5ce7] text-white animate-pulse scale-110" : "bg-[#1a1a2e] text-[#555] scale-90"}`}>
+                      {progress > (i + 1) * 18 ? "\u2713" : i + 1}
+                    </div>
+                    <span className="text-[10px] text-[#8888a8]">{step}</span>
+                  </div>
+                ))}
+              </div>
             </div>
           </div>
         </main>
