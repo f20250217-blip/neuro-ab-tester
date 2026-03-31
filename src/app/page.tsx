@@ -170,17 +170,14 @@ export default function Home() {
 
       {/* ==================== PROCESSING STATE ==================== */}
       {state === "processing" && (
-        <main className="max-w-3xl mx-auto px-6 py-12">
-          <div className="text-center space-y-8">
-            {/* Smaller brain with scanning effect */}
-            <div className="relative mx-auto w-40 h-40">
-              <div className="w-40 h-40 rounded-full bg-gradient-to-br from-[#6c5ce7]/20 to-[#00d2a0]/20 flex items-center justify-center animate-pulse">
-                <svg className="w-20 h-20 text-[#6c5ce7]" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z" />
-                </svg>
-              </div>
-            </div>
+        <main className="max-w-3xl mx-auto px-6">
+          {/* Brain animation - full width, no overlap */}
+          <div className="relative mx-auto" style={{ height: 300 }}>
+            <HeroBrain />
+          </div>
 
+          {/* All text content clearly below the brain */}
+          <div className="text-center space-y-6 mt-4">
             <div>
               <h2 className="text-2xl font-bold text-[#e8e8f0] mb-2">Analyzing Your Content</h2>
               <p className="text-[#8888a8] text-base">
@@ -203,7 +200,7 @@ export default function Home() {
               </div>
             </div>
 
-            <div className="grid grid-cols-5 gap-3 max-w-lg mx-auto mt-6">
+            <div className="grid grid-cols-5 gap-3 max-w-lg mx-auto">
               {["Download", "Listen", "Analyze", "Score", "Report"].map((step, i) => (
                 <div key={step} className="text-center">
                   <div className={`w-9 h-9 mx-auto rounded-full flex items-center justify-center text-xs font-bold mb-1.5 transition-all duration-500

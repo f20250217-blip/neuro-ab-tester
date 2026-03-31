@@ -184,14 +184,9 @@ function BrainMesh({ regions, autoRotate }: { regions: BrainRegion[]; autoRotate
         />
       </mesh>
 
-      {/* Inner glow layer */}
-      <mesh geometry={coloredGeo} scale={0.98}>
-        <meshBasicMaterial color="#6644aa" transparent opacity={0.04} side={THREE.BackSide} />
-      </mesh>
-
-      {/* Outer atmospheric glow */}
-      <mesh geometry={coloredGeo} scale={1.015}>
-        <meshBasicMaterial color="#4422aa" transparent opacity={0.02} side={THREE.BackSide} />
+      {/* Subtle outer glow */}
+      <mesh geometry={coloredGeo} scale={1.01}>
+        <meshBasicMaterial color="#4422aa" transparent opacity={0.03} side={THREE.BackSide} />
       </mesh>
     </group>
   );
@@ -203,8 +198,8 @@ function BrainMesh({ regions, autoRotate }: { regions: BrainRegion[]; autoRotate
 function Particles() {
   const ref = useRef<THREE.Points>(null);
   const positions = useMemo(() => {
-    const arr = new Float32Array(80 * 3);
-    for (let i = 0; i < 80; i++) {
+    const arr = new Float32Array(40 * 3);
+    for (let i = 0; i < 40; i++) {
       const t = Math.random() * Math.PI * 2;
       const p = Math.acos(2 * Math.random() - 1);
       const r = 1.8 + Math.random() * 0.5;
@@ -244,21 +239,30 @@ export default function Brain3D({ regions, className = "", autoRotate = true, sh
     <div className={className}>
       <Canvas
         camera={{ position: [0, 1.5, 3.5], fov: 38 }}
-        gl={{ antialias: true, alpha: true, toneMapping: THREE.ACESFilmicToneMapping, toneMappingExposure: 1.1 }}
+        dpr={[1, 1.5]}
+        performance={{ min: 0.5 }}
+        gl={{ antialias: true, alpha: true, toneMapping: THREE.ACESFilmicToneMapping, toneMappingExposure: 1.1, powerPreference: "high-performance" }}
         style={{ background: "transparent" }}
       >
         <ambientLight intensity={0.2} />
         <directionalLight position={[3, 6, 4]} intensity={0.9} color="#ffffff" />
         <directionalLight position={[-3, 3, -2]} intensity={0.3} color="#8888ff" />
-        <pointLight position={[2, 1, 3]} intensity={0.3} color="#ffaa44" distance={8} />
-        <pointLight position={[-2, -1, -2]} intensity={0.2} color="#aa66ff" distance={8} />
 
         <Float speed={0.5} rotationIntensity={0.02} floatIntensity={0.06}>
           <BrainMesh regions={regions} autoRotate={autoRotate} />
         </Float>
 
         {showParticles && <Particles />}
-        <OrbitControls enableZoom enablePan={false} minDistance={2} maxDistance={8} />
+        <OrbitControls
+          enableZoom
+          enablePan={false}
+          minDistance={2}
+          maxDistance={8}
+          enableDamping
+          dampingFactor={0.08}
+          rotateSpeed={0.8}
+          zoomSpeed={0.6}
+        />
       </Canvas>
     </div>
   );
