@@ -170,18 +170,21 @@ export default function Home() {
 
       {/* ==================== PROCESSING STATE ==================== */}
       {state === "processing" && (
-        <main className="fixed inset-0 top-[52px] flex flex-col">
-          {/* Brain fills the top area */}
-          <div className="flex-1 pointer-events-none">
+        <main className="fixed inset-0 top-[52px] overflow-hidden bg-[#0a0a0f]">
+          {/* Brain fills entire background */}
+          <div className="absolute inset-0 pointer-events-none" style={{ height: "65vh" }}>
             <HeroBrain />
           </div>
 
-          {/* Text pinned at bottom */}
-          <div className="bg-gradient-to-t from-[#0a0a0f] via-[#0a0a0f] to-transparent pt-8 pb-8 px-6">
+          {/* Gradient overlay to fade brain into bottom section */}
+          <div className="absolute inset-x-0 bottom-0" style={{ height: "55vh", background: "linear-gradient(to bottom, transparent 0%, #0a0a0f 50%)" }} />
+
+          {/* Text at the bottom */}
+          <div className="absolute inset-x-0 bottom-0 pb-10 px-6">
             <div className="max-w-lg mx-auto text-center space-y-5">
               <div>
-                <h2 className="text-xl font-bold text-[#e8e8f0] mb-1">Analyzing Your Content</h2>
-                <p className="text-[#8888a8] text-sm">
+                <h2 className="text-2xl font-bold text-[#e8e8f0] mb-2">Analyzing Your Content</h2>
+                <p className="text-[#8888a8] text-base">
                   {progress < 20 && "Downloading your content..."}
                   {progress >= 20 && progress < 40 && "Reading text & listening to audio..."}
                   {progress >= 40 && progress < 60 && "Checking what makes it engaging..."}
@@ -196,7 +199,7 @@ export default function Home() {
                   <span className="text-[#8888a8]">Progress</span>
                   <span className="text-[#6c5ce7] font-mono">{Math.round(progress)}%</span>
                 </div>
-                <div className="h-1.5 bg-[#1a1a2e] rounded-full overflow-hidden">
+                <div className="h-2 bg-[#1a1a2e] rounded-full overflow-hidden">
                   <div className="h-full rounded-full transition-all duration-500" style={{ width: `${progress}%`, background: "linear-gradient(90deg, #6c5ce7, #00d2a0)" }} />
                 </div>
               </div>
@@ -204,7 +207,7 @@ export default function Home() {
               <div className="grid grid-cols-5 gap-3">
                 {["Download", "Listen", "Analyze", "Score", "Report"].map((step, i) => (
                   <div key={step} className="text-center">
-                    <div className={`w-8 h-8 mx-auto rounded-full flex items-center justify-center text-xs font-bold mb-1 transition-all duration-500
+                    <div className={`w-9 h-9 mx-auto rounded-full flex items-center justify-center text-xs font-bold mb-1.5 transition-all duration-500
                       ${progress > (i + 1) * 18 ? "bg-[#00d2a0] text-black scale-100" : progress > i * 18 ? "bg-[#6c5ce7] text-white animate-pulse scale-110" : "bg-[#1a1a2e] text-[#555] scale-90"}`}>
                       {progress > (i + 1) * 18 ? "\u2713" : i + 1}
                     </div>
