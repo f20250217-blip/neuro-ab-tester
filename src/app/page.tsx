@@ -110,13 +110,13 @@ export default function Home() {
       {state === "upload" && (
         <main className="max-w-6xl mx-auto px-6 py-8">
           {/* Hero Section with Brain */}
-          <div className="text-center mb-6">
-            <div className="relative">
+          <div className="text-center mb-4">
+            <div className="relative -mx-6">
               <HeroBrain />
               {/* Overlay gradient for fade effect */}
-              <div className="absolute inset-x-0 bottom-0 h-32 bg-gradient-to-t from-[#0a0a0f] to-transparent" />
+              <div className="absolute inset-x-0 bottom-0 h-48 bg-gradient-to-t from-[#0a0a0f] to-transparent" />
             </div>
-            <div className="relative -mt-20 z-10">
+            <div className="relative -mt-28 z-10">
               <h2 className="text-4xl font-bold gradient-text mb-3">A/B Neural Comparison</h2>
               <p className="text-[#8888a8] max-w-xl mx-auto text-sm">
                 Drop two pieces of content. See which one triggers a stronger neural response.
