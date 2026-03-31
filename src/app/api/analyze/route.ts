@@ -91,8 +91,18 @@ async function fileToBase64(file: File): Promise<{ base64: string; mimeType: str
   return { base64, mimeType: file.type };
 }
 
+// Check if URL is from a platform that blocks direct downloads
+function isBlockedPlatform(url: string): boolean {
+  const blocked = ["youtube.com", "youtu.be", "tiktok.com", "instagram.com", "facebook.com", "twitter.com", "x.com"];
+  return blocked.some((domain) => url.includes(domain));
+}
+
 // Download content from URL and return as base64
 async function urlToBase64(url: string): Promise<{ base64: string; mimeType: string }> {
+  if (isBlockedPlatform(url)) {
+    throw new Error("YouTube, TikTok, Instagram, and social media URLs are not supported. Please download the video first and upload the file directly.");
+  }
+
   const response = await fetch(url, {
     headers: {
       "User-Agent": "Mozilla/5.0 (compatible; NeuroTestAI/1.0)",
@@ -111,12 +121,11 @@ async function urlToBase64(url: string): Promise<{ base64: string; mimeType: str
   // Determine mime type
   let mimeType = contentType.split(";")[0].trim();
   if (!mimeType.startsWith("image/") && !mimeType.startsWith("video/") && !mimeType.startsWith("audio/")) {
-    // Try to guess from URL
     if (url.match(/\.(jpg|jpeg)$/i)) mimeType = "image/jpeg";
     else if (url.match(/\.png$/i)) mimeType = "image/png";
     else if (url.match(/\.mp4$/i)) mimeType = "video/mp4";
     else if (url.match(/\.webm$/i)) mimeType = "video/webm";
-    else mimeType = "image/jpeg"; // default
+    else mimeType = "image/jpeg";
   }
 
   return { base64, mimeType };
@@ -136,8 +145,6 @@ async function aiAnalysis(
   detailedAnalysis: string;
   transcript: string;
 }> {
-  const model = genAI.getGenerativeModel({ model: "gemini-2.0-flash" });
-
   // Build parts — send the actual media to Gemini
   const parts: Array<{ text: string } | { inlineData: { mimeType: string; data: string } }> = [];
 
@@ -164,8 +171,29 @@ async function aiAnalysis(
 
   parts.push({ text: contextText + ANALYSIS_PROMPT });
 
-  const result = await model.generateContent(parts);
-  const responseText = result.response.text();
+  // Try multiple models with fallback if rate-limited
+  const models = ["gemini-2.0-flash", "gemini-1.5-flash", "gemini-2.0-flash-lite"];
+  let responseText = "";
+  let lastError: Error | null = null;
+
+  for (const modelName of models) {
+    try {
+      const model = genAI.getGenerativeModel({ model: modelName });
+      const result = await model.generateContent(parts);
+      responseText = result.response.text();
+      break;
+    } catch (err: any) {
+      lastError = err;
+      console.log(`Model ${modelName} failed: ${err.message?.slice(0, 100)}`);
+      if (!err.message?.includes("429") && !err.message?.includes("quota")) {
+        throw err; // Only retry on rate limits
+      }
+    }
+  }
+
+  if (!responseText && lastError) {
+    throw new Error("All AI models are rate-limited. Please wait a minute and try again.");
+  }
 
   // Parse features from structured response
   const features = parseAnalysisToFeatures(responseText);
