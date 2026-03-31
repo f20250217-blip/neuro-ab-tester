@@ -1,9 +1,4 @@
 import { NextRequest, NextResponse } from "next/server";
-import { writeFile, mkdir, readFile, unlink } from "fs/promises";
-import { existsSync } from "fs";
-import { join } from "path";
-import { execSync } from "child_process";
-import { v4 as uuid } from "uuid";
 import { GoogleGenerativeAI } from "@google/generative-ai";
 import {
   ContentFeatures,
@@ -15,34 +10,11 @@ import { NeuralAnalysis } from "@/lib/neuro-engine";
 
 const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY || "");
 
-const UPLOAD_DIR = join(process.cwd(), "uploads");
+// Allow larger uploads (up to 20MB)
+export const config = {
+  api: { bodyParser: false },
+};
 
-async function downloadFromUrl(url: string): Promise<string> {
-  await mkdir(UPLOAD_DIR, { recursive: true });
-  const id = uuid();
-  const outputPath = join(UPLOAD_DIR, `${id}.mp4`);
-
-  // Try yt-dlp first (handles YouTube, TikTok, Instagram, etc.)
-  try {
-    execSync(
-      `yt-dlp -f "bestvideo[height<=720]+bestaudio/best[height<=720]/best" --merge-output-format mp4 -o "${outputPath}" "${url}" 2>&1`,
-      { timeout: 120000 }
-    );
-    if (existsSync(outputPath)) return outputPath;
-  } catch (e) {
-    console.log("yt-dlp failed, trying direct download...");
-  }
-
-  // Fallback: direct download with curl
-  try {
-    execSync(`curl -sL -o "${outputPath}" "${url}"`, { timeout: 60000 });
-    if (existsSync(outputPath)) return outputPath;
-  } catch (e) {
-    console.error("Direct download failed:", e);
-  }
-
-  throw new Error("Could not download video from the provided URL");
-}
 const ANALYSIS_PROMPT = `You are a neuromarketing content analysis AI. Analyze this content and rate each dimension from 0-10.
 
 Return ONLY the scores in this exact format (one per line, no other text):
@@ -112,113 +84,48 @@ sadness: X
 ---DETAILED_ANALYSIS---
 [4-6 sentences providing a comprehensive neural response analysis of this content, discussing which brain regions it would most strongly activate and why, based on neuroscience research. Discuss emotional engagement, memory encoding potential, attention capture, and decision-making triggers.]`;
 
-async function processFile(file: File): Promise<{
-  transcript: string;
-  frames: string[];
-  filePath: string;
-}> {
-  await mkdir(UPLOAD_DIR, { recursive: true });
-  const id = uuid();
-  const ext = file.name.split(".").pop() || "mp4";
-  const filePath = join(UPLOAD_DIR, `${id}.${ext}`);
-
-  // Save file
+// Convert a File to base64 data
+async function fileToBase64(file: File): Promise<{ base64: string; mimeType: string }> {
   const bytes = await file.arrayBuffer();
-  await writeFile(filePath, Buffer.from(bytes));
-
-  const framesDir = join(UPLOAD_DIR, `${id}_frames`);
-  await mkdir(framesDir, { recursive: true });
-
-  let transcript = "";
-  const frames: string[] = [];
-
-  const isVideo = file.type.startsWith("video/");
-  const isAudio = file.type.startsWith("audio/");
-  const isImage = file.type.startsWith("image/");
-
-  if (isVideo) {
-    // Extract frames
-    try {
-      execSync(
-        `ffmpeg -y -i "${filePath}" -vf "fps=1,scale=512:-1" "${framesDir}/frame_%03d.jpg" 2>/dev/null`,
-        { timeout: 60000 }
-      );
-      // Get first 10 frames
-      for (let i = 1; i <= 10; i++) {
-        const framePath = join(framesDir, `frame_${String(i).padStart(3, "0")}.jpg`);
-        if (existsSync(framePath)) {
-          const frameData = await readFile(framePath);
-          frames.push(`data:image/jpeg;base64,${frameData.toString("base64")}`);
-        }
-      }
-    } catch (e) {
-      console.error("Frame extraction error:", e);
-    }
-
-    // Extract and transcribe audio
-    try {
-      const audioPath = join(UPLOAD_DIR, `${id}.wav`);
-      execSync(
-        `ffmpeg -y -i "${filePath}" -vn -acodec pcm_s16le -ar 16000 -ac 1 "${audioPath}" 2>/dev/null`,
-        { timeout: 60000 }
-      );
-
-      try {
-        const whisperResult = execSync(
-          `python3 -c "
-import whisper
-model = whisper.load_model('base')
-result = model.transcribe('${audioPath}', verbose=False)
-print(result['text'])
-"`,
-          { timeout: 120000 }
-        );
-        transcript = whisperResult.toString().trim();
-      } catch (e) {
-        console.error("Whisper error:", e);
-        transcript = "[Audio transcription unavailable]";
-      }
-
-      // Cleanup audio
-      if (existsSync(audioPath)) await unlink(audioPath);
-    } catch (e) {
-      console.error("Audio extraction error:", e);
-    }
-  } else if (isImage) {
-    const imgData = await readFile(filePath);
-    frames.push(`data:${file.type};base64,${imgData.toString("base64")}`);
-  } else if (isAudio) {
-    try {
-      const audioPath = filePath;
-      const wavPath = join(UPLOAD_DIR, `${id}_converted.wav`);
-      execSync(
-        `ffmpeg -y -i "${audioPath}" -acodec pcm_s16le -ar 16000 -ac 1 "${wavPath}" 2>/dev/null`,
-        { timeout: 60000 }
-      );
-      const whisperResult = execSync(
-        `python3 -c "
-import whisper
-model = whisper.load_model('base')
-result = model.transcribe('${wavPath}', verbose=False)
-print(result['text'])
-"`,
-        { timeout: 120000 }
-      );
-      transcript = whisperResult.toString().trim();
-      if (existsSync(wavPath)) await unlink(wavPath);
-    } catch (e) {
-      transcript = "[Audio transcription unavailable]";
-    }
-  }
-
-  return { transcript, frames, filePath };
+  const base64 = Buffer.from(bytes).toString("base64");
+  return { base64, mimeType: file.type };
 }
 
+// Download content from URL and return as base64
+async function urlToBase64(url: string): Promise<{ base64: string; mimeType: string }> {
+  const response = await fetch(url, {
+    headers: {
+      "User-Agent": "Mozilla/5.0 (compatible; NeuroTestAI/1.0)",
+    },
+    redirect: "follow",
+  });
+
+  if (!response.ok) {
+    throw new Error(`Failed to download from URL: ${response.status}`);
+  }
+
+  const contentType = response.headers.get("content-type") || "image/jpeg";
+  const buffer = await response.arrayBuffer();
+  const base64 = Buffer.from(buffer).toString("base64");
+
+  // Determine mime type
+  let mimeType = contentType.split(";")[0].trim();
+  if (!mimeType.startsWith("image/") && !mimeType.startsWith("video/") && !mimeType.startsWith("audio/")) {
+    // Try to guess from URL
+    if (url.match(/\.(jpg|jpeg)$/i)) mimeType = "image/jpeg";
+    else if (url.match(/\.png$/i)) mimeType = "image/png";
+    else if (url.match(/\.mp4$/i)) mimeType = "video/mp4";
+    else if (url.match(/\.webm$/i)) mimeType = "video/webm";
+    else mimeType = "image/jpeg"; // default
+  }
+
+  return { base64, mimeType };
+}
+
+// Analyze content using Gemini AI
 async function aiAnalysis(
-  transcript: string,
-  frames: string[],
-  hasVideo: boolean,
-  hasAudio: boolean
+  contentData: { base64: string; mimeType: string },
+  contentType: "video" | "image" | "audio"
 ): Promise<{
   features: ContentFeatures;
   visualDesc: string;
@@ -227,31 +134,33 @@ async function aiAnalysis(
   emotionBreakdown: NeuralAnalysis["emotionBreakdown"];
   recommendations: string[];
   detailedAnalysis: string;
+  transcript: string;
 }> {
   const model = genAI.getGenerativeModel({ model: "gemini-2.0-flash" });
 
-  // Build parts array with frames (images) + transcript
+  // Build parts — send the actual media to Gemini
   const parts: Array<{ text: string } | { inlineData: { mimeType: string; data: string } }> = [];
 
-  // Add up to 5 frames as images for visual analysis
-  for (const frame of frames.slice(0, 5)) {
-    if (frame.startsWith("data:image/")) {
-      const base64Data = frame.split(",")[1];
-      const mimeType = frame.split(";")[0].split(":")[1];
-      parts.push({ inlineData: { mimeType, data: base64Data } });
-    }
+  // Add the media content directly
+  parts.push({
+    inlineData: {
+      mimeType: contentData.mimeType,
+      data: contentData.base64,
+    },
+  });
+
+  // Build context
+  let contextText = "";
+  if (contentType === "video") {
+    contextText += "This is a VIDEO. Analyze it thoroughly — watch for visual elements, faces, colors, movement, composition, production quality, text overlays, and transitions. Also listen to and transcribe any audio/speech.\n\n";
+  } else if (contentType === "image") {
+    contextText += "This is an IMAGE/AD. Analyze it thoroughly — look at visual elements, faces, colors, composition, text, branding, and design quality.\n\n";
+  } else {
+    contextText += "This is AUDIO content. Analyze the speech, tone, music, pacing, and emotional delivery.\n\n";
   }
 
-  // Add context about what we have
-  let contextText = "";
-  if (hasVideo) contextText += "This is a VIDEO content. Analyze the frames above carefully for visual elements, faces, colors, movement cues, composition, and production quality.\n\n";
-  else if (frames.length > 0) contextText += "This is an IMAGE content. Analyze the image above carefully.\n\n";
-  if (hasAudio) contextText += "This content HAS AUDIO.\n\n";
-  if (transcript && transcript !== "[Audio transcription unavailable]") {
-    contextText += `TRANSCRIPT:\n${transcript}\n\n`;
-  } else {
-    contextText += "No transcript available. Analyze based on visual elements only.\n\n";
-  }
+  contextText += "IMPORTANT: First, if there is any speech/text in the content, transcribe it. Then analyze using the format below.\n\n";
+  contextText += "---TRANSCRIPT---\n[Write the full transcript of any speech/text visible or audible. Write 'No speech detected' if none.]\n\n";
 
   parts.push({ text: contextText + ANALYSIS_PROMPT });
 
@@ -272,6 +181,9 @@ async function aiAnalysis(
     }
     return after.trim();
   };
+
+  // Extract transcript from Gemini's response
+  const transcript = extractSection("---TRANSCRIPT---", "emotional_intensity") || "";
 
   const visualDesc = extractSection("---VISUAL_ANALYSIS---", "---AUDIO_ANALYSIS---") || "Visual analysis unavailable.";
   const audioDesc = extractSection("---AUDIO_ANALYSIS---", "---PACING_ANALYSIS---") || "Audio analysis unavailable.";
@@ -302,41 +214,13 @@ async function aiAnalysis(
 
   const detailedAnalysis = extractSection("---DETAILED_ANALYSIS---") || "Detailed analysis unavailable.";
 
-  return { features, visualDesc, audioDesc, pacingDesc, emotionBreakdown, recommendations, detailedAnalysis };
+  return { features, visualDesc, audioDesc, pacingDesc, emotionBreakdown, recommendations, detailedAnalysis, transcript };
 }
 
-async function processUrlInput(url: string): Promise<{
-  transcript: string;
-  frames: string[];
-  filePath: string;
-  isVideo: boolean;
-  isAudio: boolean;
-}> {
-  const downloadedPath = await downloadFromUrl(url);
-
-  // Detect type from file
-  let isVideo = true;
-  let isAudio = false;
-  try {
-    const probeResult = execSync(
-      `ffprobe -v quiet -show_entries stream=codec_type -of csv=p=0 "${downloadedPath}"`,
-      { timeout: 10000 }
-    ).toString();
-    isVideo = probeResult.includes("video");
-    isAudio = probeResult.includes("audio");
-  } catch {}
-
-  // Create a mock file-like for processFile
-  const { readFile: rf } = await import("fs/promises");
-  const data = await rf(downloadedPath);
-  const blob = new Blob([data], { type: isVideo ? "video/mp4" : isAudio ? "audio/mp3" : "video/mp4" });
-  const file = new File([blob], `downloaded.${isVideo ? "mp4" : "mp3"}`, { type: blob.type });
-
-  const result = await processFile(file);
-  // Clean up downloaded file
-  try { if (existsSync(downloadedPath)) await unlink(downloadedPath); } catch {}
-
-  return { ...result, isVideo, isAudio };
+function detectContentType(mimeType: string): "video" | "image" | "audio" {
+  if (mimeType.startsWith("video/")) return "video";
+  if (mimeType.startsWith("audio/")) return "audio";
+  return "image";
 }
 
 export async function POST(req: NextRequest) {
@@ -356,54 +240,40 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: "Content B required (file or URL)" }, { status: 400 });
     }
 
-    // Process both inputs in parallel
-    const processA = fileA
-      ? processFile(fileA).then((r) => ({ ...r, isVideo: fileA.type.startsWith("video/"), isAudio: fileA.type.startsWith("audio/") }))
-      : processUrlInput(urlA!);
-    const processB = fileB
-      ? processFile(fileB).then((r) => ({ ...r, isVideo: fileB.type.startsWith("video/"), isAudio: fileB.type.startsWith("audio/") }))
-      : processUrlInput(urlB!);
+    // Get content as base64 (no filesystem needed)
+    const [dataA, dataB] = await Promise.all([
+      fileA ? fileToBase64(fileA) : urlToBase64(urlA!),
+      fileB ? fileToBase64(fileB) : urlToBase64(urlB!),
+    ]);
 
-    const [resultA, resultB] = await Promise.all([processA, processB]);
+    const typeA = detectContentType(dataA.mimeType);
+    const typeB = detectContentType(dataB.mimeType);
 
-    // Analyze both with AI (in parallel)
+    // Analyze both with Gemini AI (in parallel)
     const [analysisA, analysisB] = await Promise.all([
-      aiAnalysis(
-        resultA.transcript,
-        resultA.frames,
-        resultA.isVideo,
-        resultA.isVideo || resultA.isAudio
-      ),
-      aiAnalysis(
-        resultB.transcript,
-        resultB.frames,
-        resultB.isVideo,
-        resultB.isVideo || resultB.isAudio
-      ),
+      aiAnalysis(dataA, typeA),
+      aiAnalysis(dataB, typeB),
     ]);
 
     // Build neural analysis objects
+    const thumbnailA = typeA === "image" ? `data:${dataA.mimeType};base64,${dataA.base64.slice(0, 50000)}` : undefined;
+    const thumbnailB = typeB === "image" ? `data:${dataB.mimeType};base64,${dataB.base64.slice(0, 50000)}` : undefined;
+
     const neuralA = buildNeuralAnalysis(
-      "a", labelA, analysisA.features, resultA.transcript,
+      "a", labelA, analysisA.features, analysisA.transcript,
       analysisA.visualDesc, analysisA.audioDesc, analysisA.pacingDesc,
       analysisA.emotionBreakdown, analysisA.recommendations, analysisA.detailedAnalysis,
-      resultA.frames[0]
+      thumbnailA
     );
     const neuralB = buildNeuralAnalysis(
-      "b", labelB, analysisB.features, resultB.transcript,
+      "b", labelB, analysisB.features, analysisB.transcript,
       analysisB.visualDesc, analysisB.audioDesc, analysisB.pacingDesc,
       analysisB.emotionBreakdown, analysisB.recommendations, analysisB.detailedAnalysis,
-      resultB.frames[0]
+      thumbnailB
     );
 
     // Compare
     const comparison = compareAnalyses(neuralA, neuralB);
-
-    // Cleanup files
-    try {
-      if (existsSync(resultA.filePath)) await unlink(resultA.filePath);
-      if (existsSync(resultB.filePath)) await unlink(resultB.filePath);
-    } catch {}
 
     return NextResponse.json({ comparison });
   } catch (error: any) {
