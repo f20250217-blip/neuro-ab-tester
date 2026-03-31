@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { GoogleGenerativeAI } from "@google/generative-ai";
+import ytdl from "@distube/ytdl-core";
 import {
   ContentFeatures,
   parseAnalysisToFeatures,
@@ -91,30 +92,91 @@ async function fileToBase64(file: File): Promise<{ base64: string; mimeType: str
   return { base64, mimeType: file.type };
 }
 
-// Check if URL is from a platform that blocks direct downloads
-function isBlockedPlatform(url: string): boolean {
-  const blocked = ["youtube.com", "youtu.be", "tiktok.com", "instagram.com", "facebook.com", "twitter.com", "x.com"];
-  return blocked.some((domain) => url.includes(domain));
+// Check if URL is a YouTube link
+function isYouTubeUrl(url: string): boolean {
+  return url.includes("youtube.com") || url.includes("youtu.be");
 }
 
-// Download content from URL and return as base64
-async function urlToBase64(url: string): Promise<{ base64: string; mimeType: string }> {
-  if (isBlockedPlatform(url)) {
-    throw new Error("YouTube, TikTok, Instagram, and social media URLs are not supported. Please download the video first and upload the file directly.");
+// Download YouTube video using ytdl-core (works on serverless)
+async function youtubeToBase64(url: string): Promise<{ base64: string; mimeType: string }> {
+  try {
+    // Download lowest quality video to keep it fast and small
+    const stream = ytdl(url, {
+      quality: "lowestvideo",
+      filter: "videoandaudio",
+    });
+
+    const chunks: Buffer[] = [];
+    let totalSize = 0;
+    const MAX_SIZE = 15 * 1024 * 1024; // 15MB limit
+
+    for await (const chunk of stream) {
+      chunks.push(Buffer.from(chunk));
+      totalSize += chunk.length;
+      if (totalSize > MAX_SIZE) {
+        stream.destroy();
+        break;
+      }
+    }
+
+    const buffer = Buffer.concat(chunks);
+    return {
+      base64: buffer.toString("base64"),
+      mimeType: "video/mp4",
+    };
+  } catch (err: any) {
+    // Fallback: get thumbnail + video info for analysis
+    console.log("ytdl stream failed, falling back to thumbnail:", err.message);
+    return youtubeThumbFallback(url);
+  }
+}
+
+// Fallback: use YouTube thumbnail + metadata when video download fails
+async function youtubeThumbFallback(url: string): Promise<{ base64: string; mimeType: string }> {
+  let videoId = "";
+  const match = url.match(/(?:v=|youtu\.be\/)([a-zA-Z0-9_-]{11})/);
+  if (match) videoId = match[1];
+
+  if (!videoId) throw new Error("Could not extract YouTube video ID");
+
+  // Get highest quality thumbnail
+  const thumbUrl = `https://img.youtube.com/vi/${videoId}/maxresdefault.jpg`;
+  const response = await fetch(thumbUrl);
+
+  if (!response.ok) {
+    // Try lower quality
+    const fallbackUrl = `https://img.youtube.com/vi/${videoId}/hqdefault.jpg`;
+    const fallbackRes = await fetch(fallbackUrl);
+    if (!fallbackRes.ok) throw new Error("Could not fetch YouTube thumbnail");
+    const buffer = await fallbackRes.arrayBuffer();
+    return { base64: Buffer.from(buffer).toString("base64"), mimeType: "image/jpeg" };
   }
 
+  const buffer = await response.arrayBuffer();
+  return { base64: Buffer.from(buffer).toString("base64"), mimeType: "image/jpeg" };
+}
+
+// Download content from any URL
+async function urlToBase64(url: string): Promise<{ base64: string; mimeType: string }> {
+  // Handle YouTube
+  if (isYouTubeUrl(url)) {
+    return youtubeToBase64(url);
+  }
+
+  // Handle TikTok, Instagram, etc. — try direct fetch with browser-like headers
   const response = await fetch(url, {
     headers: {
-      "User-Agent": "Mozilla/5.0 (compatible; NeuroTestAI/1.0)",
+      "User-Agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
+      "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,image/*,video/*,*/*;q=0.8",
     },
     redirect: "follow",
   });
 
   if (!response.ok) {
-    throw new Error(`Failed to download from URL: ${response.status}`);
+    throw new Error(`Failed to download from URL (${response.status}). Try uploading the file directly.`);
   }
 
-  const contentType = response.headers.get("content-type") || "image/jpeg";
+  const contentType = response.headers.get("content-type") || "";
   const buffer = await response.arrayBuffer();
   const base64 = Buffer.from(buffer).toString("base64");
 
