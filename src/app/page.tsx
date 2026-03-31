@@ -82,7 +82,7 @@ export default function Home() {
   };
 
   return (
-    <div className="min-h-screen bg-[#0a0a0f]">
+    <div className="min-h-screen bg-[#0a0a0f] overflow-x-hidden">
       {/* Header */}
       <header className="border-b border-[#2a2a4a]/60 bg-[#0a0a0f]/90 backdrop-blur-xl sticky top-0 z-50">
         <div className="max-w-7xl mx-auto px-6 py-3 flex items-center justify-between">
@@ -108,7 +108,7 @@ export default function Home() {
 
       {/* ==================== UPLOAD STATE ==================== */}
       {state === "upload" && (
-        <main className="max-w-6xl mx-auto px-6 py-8">
+        <main className="max-w-6xl mx-auto px-4 md:px-6 py-8">
           {/* Hero Section with Brain */}
           <div className="text-center mb-4">
             <div className="relative -mx-6">
@@ -117,7 +117,7 @@ export default function Home() {
               <div className="absolute inset-x-0 bottom-0 h-48 bg-gradient-to-t from-[#0a0a0f] to-transparent" />
             </div>
             <div className="relative -mt-28 z-10">
-              <h2 className="text-4xl font-bold gradient-text mb-3">A/B Neural Comparison</h2>
+              <h2 className="text-2xl md:text-4xl font-bold gradient-text mb-3">A/B Neural Comparison</h2>
               <p className="text-[#8888a8] max-w-xl mx-auto text-sm">
                 Drop two pieces of content. See which one triggers a stronger neural response.
                 Simulate brain activation before spending a single dollar.
@@ -151,7 +151,7 @@ export default function Home() {
 
           <div className="flex justify-center">
             <button onClick={runAnalysis} disabled={!hasA || !hasB}
-              className={`px-10 py-4 rounded-xl font-semibold text-lg transition-all
+              className={`px-6 md:px-10 py-3 md:py-4 rounded-xl font-semibold text-base md:text-lg transition-all
                 ${hasA && hasB
                   ? "bg-gradient-to-r from-[#6c5ce7] to-[#00d2a0] text-white hover:shadow-xl hover:shadow-[#6c5ce7]/30 hover:scale-[1.02] active:scale-[0.98]"
                   : "bg-[#1a1a2e] text-[#555] cursor-not-allowed border border-[#2a2a4a]"}`}>
@@ -172,7 +172,7 @@ export default function Home() {
       {state === "processing" && (
         <main className="fixed inset-0 top-[52px] overflow-hidden bg-[#0a0a0f]">
           {/* Brain fills entire background */}
-          <div className="absolute inset-0 pointer-events-none" style={{ height: "65vh" }}>
+          <div className="absolute inset-0 pointer-events-none h-[50vh] md:h-[65vh]">
             <Brain3D
               regions={[
                 { name: "L-Frontal", id: "lf", role: "", position: [-0.4, 0.3, 0.7], activation: 0.85, color: "#ffaa00" },
@@ -195,7 +195,7 @@ export default function Home() {
           <div className="absolute inset-x-0 bottom-0" style={{ height: "55vh", background: "linear-gradient(to bottom, transparent 0%, #0a0a0f 50%)" }} />
 
           {/* Text at the bottom */}
-          <div className="absolute inset-x-0 bottom-0 pb-10 px-6">
+          <div className="absolute inset-x-0 bottom-0 pb-16 md:pb-10 px-4 md:px-6">
             <div className="max-w-lg mx-auto text-center space-y-5">
               <div>
                 <h2 className="text-2xl font-bold text-[#e8e8f0] mb-2">Analyzing Your Content</h2>
@@ -237,16 +237,16 @@ export default function Home() {
 
       {/* ==================== RESULTS STATE ==================== */}
       {state === "results" && result && (
-        <main className="max-w-7xl mx-auto px-6 py-6 space-y-6">
+        <main className="max-w-7xl mx-auto px-4 md:px-6 py-6 space-y-6">
 
           {/* Winner Banner */}
           <div className="glow-border rounded-2xl bg-gradient-to-r from-[#12121a] to-[#1a1a2e] border border-[#2a2a4a] p-5">
-            <div className="flex items-center gap-4">
-              <div className={`w-14 h-14 rounded-2xl flex items-center justify-center text-2xl font-black shadow-lg
+            <div className="flex flex-wrap items-center gap-4">
+              <div className={`w-14 h-14 rounded-2xl flex items-center justify-center text-2xl font-black shadow-lg flex-shrink-0
                 ${result.winner === "A" ? "bg-[#6c5ce7] shadow-[#6c5ce7]/30" : "bg-[#00d2a0] text-black shadow-[#00d2a0]/30"}`}>
                 {result.winner}
               </div>
-              <div className="flex-1">
+              <div className="flex-1 min-w-0">
                 <h3 className="text-lg font-bold text-[#e8e8f0]">
                   {result.winner === "A" ? result.contentA.label : result.contentB.label} performs better
                 </h3>
@@ -263,7 +263,7 @@ export default function Home() {
           </div>
 
           {/* Tab Navigation */}
-          <div className="flex gap-1 bg-[#12121a] rounded-xl p-1 border border-[#2a2a4a]">
+          <div className="flex gap-1 bg-[#12121a] rounded-xl p-1 border border-[#2a2a4a] overflow-x-auto">
             {[
               { id: "overview" as const, label: "Overview" },
               { id: "regions" as const, label: "Score Breakdown" },
@@ -271,7 +271,7 @@ export default function Home() {
               { id: "recommendations" as const, label: "How to Improve" },
             ].map((tab) => (
               <button key={tab.id} onClick={() => setActiveTab(tab.id)}
-                className={`flex-1 py-2.5 px-4 rounded-lg text-sm font-medium transition-all
+                className={`flex-1 py-2.5 px-4 rounded-lg text-sm font-medium transition-all whitespace-nowrap
                   ${activeTab === tab.id ? "bg-[#1a1a2e] text-[#e8e8f0] shadow-lg" : "text-[#8888a8] hover:text-[#e8e8f0]"}`}>
                 {tab.label}
               </button>
@@ -298,15 +298,18 @@ export default function Home() {
                     { label: "Grabs Your Attention", a: result.contentA.attentionCapture, b: result.contentB.attentionCapture },
                     { label: "Builds Trust", a: result.contentA.trustBuilding, b: result.contentB.trustBuilding },
                   ].map((row) => (
-                    <div key={row.label} className="flex items-center gap-4">
-                      <span className="text-xs font-mono text-[#6c5ce7] w-8 text-right">{row.a.toFixed(1)}</span>
-                      <div className="flex-1 flex h-3 rounded-full overflow-hidden bg-[#0a0a0f]">
-                        <div className="h-full bg-[#6c5ce7] rounded-l-full transition-all duration-1000" style={{ width: `${(row.a / 10) * 50}%` }} />
-                        <div className="w-px bg-[#2a2a4a]" />
-                        <div className="h-full bg-[#00d2a0] rounded-r-full transition-all duration-1000 ml-auto" style={{ width: `${(row.b / 10) * 50}%` }} />
+                    <div key={row.label} className="flex flex-col gap-1 md:flex-row md:items-center md:gap-4">
+                      <span className="text-xs text-[#8888a8] md:hidden">{row.label}</span>
+                      <div className="flex items-center gap-2 md:gap-4 flex-1">
+                        <span className="text-xs font-mono text-[#6c5ce7] w-8 text-right">{row.a.toFixed(1)}</span>
+                        <div className="flex-1 flex h-3 rounded-full overflow-hidden bg-[#0a0a0f]">
+                          <div className="h-full bg-[#6c5ce7] rounded-l-full transition-all duration-1000" style={{ width: `${(row.a / 10) * 50}%` }} />
+                          <div className="w-px bg-[#2a2a4a]" />
+                          <div className="h-full bg-[#00d2a0] rounded-r-full transition-all duration-1000 ml-auto" style={{ width: `${(row.b / 10) * 50}%` }} />
+                        </div>
+                        <span className="text-xs font-mono text-[#00d2a0] w-8">{row.b.toFixed(1)}</span>
+                        <span className="text-xs text-[#8888a8] w-32 hidden md:inline">{row.label}</span>
                       </div>
-                      <span className="text-xs font-mono text-[#00d2a0] w-8">{row.b.toFixed(1)}</span>
-                      <span className="text-xs text-[#8888a8] w-32">{row.label}</span>
                     </div>
                   ))}
                 </div>
@@ -416,7 +419,7 @@ function BrainCard({ analysis, color, label }: { analysis: NeuralAnalysis; color
       </div>
 
       {/* 3D Brain */}
-      <div className="h-[320px] bg-[#080810] relative">
+      <div className="h-[220px] md:h-[320px] bg-[#080810] relative">
         <Brain3D regions={analysis.regions} className="w-full h-full" showParticles={true} />
         {/* Region legend overlay */}
         <div className="absolute bottom-2 left-2 right-2 flex flex-wrap gap-1">

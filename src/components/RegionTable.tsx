@@ -15,7 +15,7 @@ interface RegionTableProps {
 export default function RegionTable({ rows }: RegionTableProps) {
   return (
     <div className="overflow-x-auto">
-      <table className="w-full text-sm">
+      <table className="w-full text-sm min-w-[600px]">
         <thead>
           <tr className="border-b border-[#2a2a4a]">
             <th className="text-left py-3 px-4 text-[#8888a8] font-medium">Brain Region</th>
