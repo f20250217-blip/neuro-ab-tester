@@ -262,6 +262,7 @@ export default function Brain3D({ regions, className = "", autoRotate = true, sh
           dampingFactor={0.08}
           rotateSpeed={0.8}
           zoomSpeed={0.5}
+          touches={{ ONE: THREE.TOUCH.ROTATE, TWO: THREE.TOUCH.DOLLY_ROTATE }}
         />
       </Canvas>
     </div>
