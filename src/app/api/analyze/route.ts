@@ -16,9 +16,30 @@ export const config = {
   api: { bodyParser: false },
 };
 
-const ANALYSIS_PROMPT = `You are a neuromarketing content analysis AI. Analyze this content and rate each dimension from 0-10.
+const ANALYSIS_PROMPT = `You are a world-class neuromarketing scientist with 20+ years of expertise in consumer neuroscience, fMRI studies, eye-tracking research, and behavioral psychology. You have deep knowledge of how the brain processes marketing content based on peer-reviewed research from journals like the Journal of Consumer Psychology, NeuroImage, and the Journal of Marketing Research.
 
-Return ONLY the scores in this exact format (one per line, no other text):
+ANALYZE THIS CONTENT WITH EXTREME PRECISION. Do NOT give generic or inflated scores. Be brutally honest.
+
+SCORING RULES (CRITICAL — follow these exactly):
+- 0-1: Feature is completely absent or anti-effective
+- 2-3: Feature is weak, barely present, amateur execution
+- 4-5: Feature is average, present but unremarkable — most generic content falls here
+- 6-7: Feature is strong, well-executed, above average
+- 8-9: Feature is exceptional, professional-grade, top 10% of content
+- 10: Feature is world-class, best-in-class execution, rarely given
+- IMPORTANT: Most scores should fall between 3-7. A score of 8+ should be rare and justified. Do NOT inflate scores.
+- Score each dimension INDEPENDENTLY. A video can have great visuals (8) but terrible CTA (2).
+- Base scores on OBSERVABLE EVIDENCE in the content, not assumptions.
+
+WHAT TO ANALYZE IN DETAIL:
+- VISUALS: Camera angles, lighting quality, color grading, composition (rule of thirds), text overlays, thumbnails, transitions, b-roll usage, face close-ups, eye contact with camera, background design, brand elements
+- AUDIO: Voice tone/pitch/pace, background music genre & energy, sound effects, audio mixing quality, silence usage, ASMR elements, voice-over vs talking head
+- LANGUAGE: Power words (free, new, proven, secret, instant), emotional triggers, rhetorical questions, metaphors, repetition patterns, sentence length variation, reading level
+- PERSUASION: Cialdini's 6 principles (reciprocity, commitment, social proof, authority, liking, scarcity), loss aversion framing, anchoring, decoy effects, bandwagon effect
+- STRUCTURE: Hook in first 3 seconds, pattern interrupts, open loops, payoff timing, CTA placement, information density per second
+- NEUROSCIENCE MARKERS: Mirror neuron triggers (facial expressions, gestures), dopamine triggers (curiosity gaps, rewards), oxytocin triggers (stories, trust), cortisol triggers (urgency, fear), serotonin triggers (social validation)
+
+Rate each dimension from 0-10 with decimal precision (e.g., 6.5):
 emotional_intensity: X
 urgency: X
 surprise: X
@@ -59,13 +80,13 @@ authenticity: X
 energy_level: X
 
 ---VISUAL_ANALYSIS---
-[2-3 sentences about the visual elements]
+[Provide 4-5 detailed sentences analyzing: camera work & angles, lighting (natural/studio/dramatic), color palette & grading, composition & framing, text overlays & graphics, face presence & eye contact, visual transitions, production quality level (amateur/semi-pro/professional/broadcast), and specific visual techniques used (zoom, pan, split-screen, etc.)]
 
 ---AUDIO_ANALYSIS---
-[2-3 sentences about audio/voice quality]
+[Provide 4-5 detailed sentences analyzing: voice characteristics (pitch, pace, accent, confidence level), background music (genre, tempo BPM estimate, energy level, emotional tone), sound design & effects, audio mixing quality, strategic use of silence/pauses, whether voice matches the content's intent, and vocal techniques (emphasis, whisper, crescendo)]
 
 ---PACING_ANALYSIS---
-[2-3 sentences about content pacing and structure]
+[Provide 4-5 detailed sentences analyzing: hook timing (how quickly it grabs attention), information density (bits per second), pattern interrupts and their timing, build-up to key moments, CTA timing relative to emotional peaks, overall rhythm (fast-cut vs slow-burn), scene/topic transition speed, and whether pacing matches the platform it's designed for]
 
 ---EMOTION_BREAKDOWN---
 joy: X
@@ -76,14 +97,14 @@ anticipation: X
 sadness: X
 
 ---RECOMMENDATIONS---
-1. [specific improvement recommendation]
-2. [specific improvement recommendation]
-3. [specific improvement recommendation]
-4. [specific improvement recommendation]
-5. [specific improvement recommendation]
+1. [Specific, actionable recommendation with WHY it would work neurologically — reference the exact brain region or psychological principle]
+2. [Specific, actionable recommendation targeting the weakest scoring dimension]
+3. [Specific, actionable recommendation to improve memory retention (hippocampal encoding)]
+4. [Specific, actionable recommendation to increase conversion/action (motor cortex + prefrontal activation)]
+5. [Specific, actionable recommendation comparing to best practices from top-performing content in this category]
 
 ---DETAILED_ANALYSIS---
-[4-6 sentences providing a comprehensive neural response analysis of this content, discussing which brain regions it would most strongly activate and why, based on neuroscience research. Discuss emotional engagement, memory encoding potential, attention capture, and decision-making triggers.]`;
+[Provide 6-8 sentences of expert-level neural response analysis. Map specific content elements to specific brain regions: Prefrontal Cortex (decision-making), Amygdala (emotional processing), Hippocampus (memory formation), Visual Cortex (V1-V5 processing), Auditory Cortex, Broca's Area (language production), Wernicke's Area (comprehension), Nucleus Accumbens (reward/dopamine), Insula (empathy/trust), Anterior Cingulate (attention), Motor Cortex (action impulse), Temporal Pole (narrative). Discuss the likely fMRI activation pattern. Reference specific neuroscience findings (e.g., "faces activate the fusiform face area within 170ms" or "narrative transport increases oxytocin by up to 47%"). Predict real-world performance: estimated watch-through rate, recall likelihood after 24h, and conversion potential.]`;
 
 // Convert a File to base64 data
 async function fileToBase64(file: File): Promise<{ base64: string; mimeType: string }> {
