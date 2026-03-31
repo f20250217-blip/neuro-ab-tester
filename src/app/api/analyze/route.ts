@@ -92,82 +92,153 @@ async function fileToBase64(file: File): Promise<{ base64: string; mimeType: str
   return { base64, mimeType: file.type };
 }
 
-// Check if URL is a YouTube link
-function isYouTubeUrl(url: string): boolean {
-  return url.includes("youtube.com") || url.includes("youtu.be");
+// Social media platforms that need special handling
+const SOCIAL_PLATFORMS = [
+  "youtube.com", "youtu.be",
+  "instagram.com",
+  "tiktok.com",
+  "facebook.com", "fb.watch",
+  "twitter.com", "x.com",
+  "reddit.com",
+  "pinterest.com", "pin.it",
+  "snapchat.com",
+  "linkedin.com",
+  "vimeo.com",
+  "dailymotion.com",
+  "twitch.tv",
+  "threads.net",
+];
+
+function isSocialMediaUrl(url: string): boolean {
+  return SOCIAL_PLATFORMS.some((domain) => url.includes(domain));
 }
 
-// Download YouTube video using ytdl-core (works on serverless)
-async function youtubeToBase64(url: string): Promise<{ base64: string; mimeType: string }> {
-  try {
-    // Download lowest quality video to keep it fast and small
-    const stream = ytdl(url, {
-      quality: "lowestvideo",
-      filter: "videoandaudio",
-    });
+// Download video from any social platform using cobalt API
+async function socialMediaToBase64(url: string): Promise<{ base64: string; mimeType: string }> {
+  // Try cobalt API (supports YouTube, Instagram, TikTok, Twitter, Facebook, Reddit, Pinterest, etc.)
+  const cobaltInstances = [
+    "https://api.cobalt.tools",
+    "https://cobalt-api.ayo.tf",
+  ];
 
-    const chunks: Buffer[] = [];
-    let totalSize = 0;
-    const MAX_SIZE = 15 * 1024 * 1024; // 15MB limit
+  for (const instance of cobaltInstances) {
+    try {
+      const cobaltRes = await fetch(instance, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "Accept": "application/json",
+        },
+        body: JSON.stringify({
+          url,
+          videoQuality: "360",
+          filenameStyle: "basic",
+        }),
+      });
 
-    for await (const chunk of stream) {
-      chunks.push(Buffer.from(chunk));
-      totalSize += chunk.length;
-      if (totalSize > MAX_SIZE) {
-        stream.destroy();
-        break;
+      if (!cobaltRes.ok) continue;
+
+      const cobaltData = await cobaltRes.json();
+
+      // cobalt returns a direct download URL or tunnel URL
+      let downloadUrl = "";
+      if (cobaltData.status === "redirect" || cobaltData.status === "tunnel") {
+        downloadUrl = cobaltData.url;
+      } else if (cobaltData.status === "picker" && cobaltData.picker?.length > 0) {
+        // For posts with multiple media, pick the first video or image
+        const videoItem = cobaltData.picker.find((p: any) => p.type === "video") || cobaltData.picker[0];
+        downloadUrl = videoItem.url;
       }
-    }
 
-    const buffer = Buffer.concat(chunks);
-    return {
-      base64: buffer.toString("base64"),
-      mimeType: "video/mp4",
-    };
-  } catch (err: any) {
-    // Fallback: get thumbnail + video info for analysis
-    console.log("ytdl stream failed, falling back to thumbnail:", err.message);
-    return youtubeThumbFallback(url);
+      if (downloadUrl) {
+        const mediaRes = await fetch(downloadUrl);
+        if (!mediaRes.ok) continue;
+
+        const buffer = await mediaRes.arrayBuffer();
+        const contentType = mediaRes.headers.get("content-type") || "video/mp4";
+        const mimeType = contentType.split(";")[0].trim();
+
+        return {
+          base64: Buffer.from(buffer).toString("base64"),
+          mimeType: mimeType.startsWith("video/") || mimeType.startsWith("image/") || mimeType.startsWith("audio/")
+            ? mimeType
+            : "video/mp4",
+        };
+      }
+    } catch (err: any) {
+      console.log(`Cobalt instance ${instance} failed:`, err.message);
+    }
   }
+
+  // Fallback for YouTube: try ytdl-core
+  if (url.includes("youtube.com") || url.includes("youtu.be")) {
+    try {
+      return await youtubeWithYtdl(url);
+    } catch (err: any) {
+      console.log("ytdl-core fallback failed:", err.message);
+      return youtubeThumbFallback(url);
+    }
+  }
+
+  throw new Error("Could not download video from this URL. Please download it manually and upload the file.");
 }
 
-// Fallback: use YouTube thumbnail + metadata when video download fails
-async function youtubeThumbFallback(url: string): Promise<{ base64: string; mimeType: string }> {
-  let videoId = "";
-  const match = url.match(/(?:v=|youtu\.be\/)([a-zA-Z0-9_-]{11})/);
-  if (match) videoId = match[1];
+// YouTube download via ytdl-core
+async function youtubeWithYtdl(url: string): Promise<{ base64: string; mimeType: string }> {
+  const stream = ytdl(url, {
+    quality: "lowestvideo",
+    filter: "videoandaudio",
+  });
 
-  if (!videoId) throw new Error("Could not extract YouTube video ID");
+  const chunks: Buffer[] = [];
+  let totalSize = 0;
+  const MAX_SIZE = 15 * 1024 * 1024;
 
-  // Get highest quality thumbnail
-  const thumbUrl = `https://img.youtube.com/vi/${videoId}/maxresdefault.jpg`;
-  const response = await fetch(thumbUrl);
-
-  if (!response.ok) {
-    // Try lower quality
-    const fallbackUrl = `https://img.youtube.com/vi/${videoId}/hqdefault.jpg`;
-    const fallbackRes = await fetch(fallbackUrl);
-    if (!fallbackRes.ok) throw new Error("Could not fetch YouTube thumbnail");
-    const buffer = await fallbackRes.arrayBuffer();
-    return { base64: Buffer.from(buffer).toString("base64"), mimeType: "image/jpeg" };
+  for await (const chunk of stream) {
+    chunks.push(Buffer.from(chunk));
+    totalSize += chunk.length;
+    if (totalSize > MAX_SIZE) {
+      stream.destroy();
+      break;
+    }
   }
 
-  const buffer = await response.arrayBuffer();
-  return { base64: Buffer.from(buffer).toString("base64"), mimeType: "image/jpeg" };
+  return {
+    base64: Buffer.concat(chunks).toString("base64"),
+    mimeType: "video/mp4",
+  };
+}
+
+// YouTube thumbnail fallback
+async function youtubeThumbFallback(url: string): Promise<{ base64: string; mimeType: string }> {
+  const match = url.match(/(?:v=|youtu\.be\/)([a-zA-Z0-9_-]{11})/);
+  if (!match) throw new Error("Could not extract YouTube video ID");
+  const videoId = match[1];
+
+  for (const quality of ["maxresdefault", "hqdefault", "mqdefault"]) {
+    const thumbUrl = `https://img.youtube.com/vi/${videoId}/${quality}.jpg`;
+    const response = await fetch(thumbUrl);
+    if (response.ok) {
+      const buffer = await response.arrayBuffer();
+      return { base64: Buffer.from(buffer).toString("base64"), mimeType: "image/jpeg" };
+    }
+  }
+
+  throw new Error("Could not fetch YouTube thumbnail");
 }
 
 // Download content from any URL
 async function urlToBase64(url: string): Promise<{ base64: string; mimeType: string }> {
-  // Handle YouTube
-  if (isYouTubeUrl(url)) {
-    return youtubeToBase64(url);
+  // Handle social media platforms
+  if (isSocialMediaUrl(url)) {
+    return socialMediaToBase64(url);
   }
 
-  // Handle TikTok, Instagram, etc. — try direct fetch with browser-like headers
+  // Direct URL fetch for regular links
   const response = await fetch(url, {
     headers: {
       "User-Agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
-      "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,image/*,video/*,*/*;q=0.8",
+      "Accept": "image/*,video/*,audio/*,*/*;q=0.8",
     },
     redirect: "follow",
   });
@@ -180,7 +251,6 @@ async function urlToBase64(url: string): Promise<{ base64: string; mimeType: str
   const buffer = await response.arrayBuffer();
   const base64 = Buffer.from(buffer).toString("base64");
 
-  // Determine mime type
   let mimeType = contentType.split(";")[0].trim();
   if (!mimeType.startsWith("image/") && !mimeType.startsWith("video/") && !mimeType.startsWith("audio/")) {
     if (url.match(/\.(jpg|jpeg)$/i)) mimeType = "image/jpeg";
