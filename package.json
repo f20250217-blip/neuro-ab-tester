@@ -13,6 +13,8 @@
   "license": "ISC",
   "type": "module",
   "dependencies": {
+    "@anthropic-ai/sdk": "^0.81.0",
+    "@google/generative-ai": "^0.24.1",
     "@react-three/drei": "^10.7.7",
     "@react-three/fiber": "^9.5.0",
     "@tailwindcss/postcss": "^4.2.2",

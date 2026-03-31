@@ -4,6 +4,7 @@ import { existsSync } from "fs";
 import { join } from "path";
 import { execSync } from "child_process";
 import { v4 as uuid } from "uuid";
+import { GoogleGenerativeAI } from "@google/generative-ai";
 import {
   ContentFeatures,
   parseAnalysisToFeatures,
@@ -11,6 +12,8 @@ import {
   compareAnalyses,
 } from "@/lib/analyzer";
 import { NeuralAnalysis } from "@/lib/neuro-engine";
+
+const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY || "");
 
 const UPLOAD_DIR = join(process.cwd(), "uploads");
 
@@ -211,7 +214,12 @@ print(result['text'])
   return { transcript, frames, filePath };
 }
 
-function simulateAnalysis(transcript: string, hasVideo: boolean, hasAudio: boolean): {
+async function aiAnalysis(
+  transcript: string,
+  frames: string[],
+  hasVideo: boolean,
+  hasAudio: boolean
+): Promise<{
   features: ContentFeatures;
   visualDesc: string;
   audioDesc: string;
@@ -219,112 +227,82 @@ function simulateAnalysis(transcript: string, hasVideo: boolean, hasAudio: boole
   emotionBreakdown: NeuralAnalysis["emotionBreakdown"];
   recommendations: string[];
   detailedAnalysis: string;
-} {
-  // Analyze transcript for content features
-  const words = transcript.toLowerCase().split(/\s+/);
-  const wordCount = words.length;
+}> {
+  const model = genAI.getGenerativeModel({ model: "gemini-2.0-flash" });
 
-  const emotionalWords = ["love", "hate", "fear", "amazing", "terrible", "incredible", "shocking", "beautiful", "dangerous", "exciting", "powerful", "urgent", "critical", "transform", "revolutionary"];
-  const urgencyWords = ["now", "today", "immediately", "hurry", "limited", "exclusive", "deadline", "last", "final", "quick"];
-  const ctaWords = ["click", "buy", "subscribe", "sign", "join", "start", "try", "get", "grab", "download", "call", "visit", "learn"];
-  const storyWords = ["once", "story", "journey", "remember", "imagine", "picture", "happened", "experience", "discovered"];
-  const dataWords = ["percent", "%", "study", "research", "data", "statistics", "survey", "report", "found", "showed", "proven"];
-  const socialWords = ["everyone", "people", "millions", "thousands", "community", "together", "joined", "popular", "trending"];
+  // Build parts array with frames (images) + transcript
+  const parts: Array<{ text: string } | { inlineData: { mimeType: string; data: string } }> = [];
 
-  const countMatches = (list: string[]) =>
-    Math.min(10, words.filter(w => list.some(kw => w.includes(kw))).length * 2) / 10;
+  // Add up to 5 frames as images for visual analysis
+  for (const frame of frames.slice(0, 5)) {
+    if (frame.startsWith("data:image/")) {
+      const base64Data = frame.split(",")[1];
+      const mimeType = frame.split(";")[0].split(":")[1];
+      parts.push({ inlineData: { mimeType, data: base64Data } });
+    }
+  }
 
-  const emotionalScore = Math.min(1, countMatches(emotionalWords) + 0.3);
-  const urgencyScore = countMatches(urgencyWords);
-  const ctaScore = countMatches(ctaWords);
-  const storyScore = Math.min(1, countMatches(storyWords) + 0.2);
-  const dataScore = countMatches(dataWords);
-  const socialScore = countMatches(socialWords);
+  // Add context about what we have
+  let contextText = "";
+  if (hasVideo) contextText += "This is a VIDEO content. Analyze the frames above carefully for visual elements, faces, colors, movement cues, composition, and production quality.\n\n";
+  else if (frames.length > 0) contextText += "This is an IMAGE content. Analyze the image above carefully.\n\n";
+  if (hasAudio) contextText += "This content HAS AUDIO.\n\n";
+  if (transcript && transcript !== "[Audio transcription unavailable]") {
+    contextText += `TRANSCRIPT:\n${transcript}\n\n`;
+  } else {
+    contextText += "No transcript available. Analyze based on visual elements only.\n\n";
+  }
 
-  // Check for questions (engagement)
-  const questionCount = (transcript.match(/\?/g) || []).length;
-  const hasQuestions = Math.min(1, questionCount * 0.2);
+  parts.push({ text: contextText + ANALYSIS_PROMPT });
 
-  // Pacing from word count
-  const pacingScore = wordCount > 50 ? Math.min(1, 0.5 + (wordCount > 100 ? 0.3 : 0.1)) : 0.4;
+  const result = await model.generateContent(parts);
+  const responseText = result.response.text();
 
-  const features: ContentFeatures = {
-    emotionalIntensity: clamp(emotionalScore + 0.1),
-    urgency: clamp(urgencyScore + 0.15),
-    surprise: clamp(emotionalScore * 0.7 + hasQuestions * 0.3),
-    empathy: clamp(storyScore * 0.6 + socialScore * 0.3 + 0.1),
-    vulnerability: clamp(storyScore * 0.4 + 0.15),
-    anticipation: clamp(urgencyScore * 0.4 + ctaScore * 0.3 + 0.2),
-    visualQuality: hasVideo ? clamp(0.6 + Math.random() * 0.3) : 0.3,
-    movement: hasVideo ? clamp(0.5 + Math.random() * 0.3) : 0.1,
-    colorIntensity: hasVideo ? clamp(0.5 + Math.random() * 0.3) : 0.2,
-    facePresence: hasVideo ? clamp(0.5 + Math.random() * 0.4) : 0.1,
-    contrast: hasVideo ? clamp(0.4 + Math.random() * 0.3) : 0.2,
-    voiceClarity: hasAudio ? clamp(0.6 + Math.random() * 0.3) : 0.2,
-    musicPresence: clamp(0.2 + Math.random() * 0.3),
-    audioVariety: hasAudio ? clamp(0.4 + Math.random() * 0.3) : 0.1,
-    speechClarity: hasAudio ? clamp(0.6 + Math.random() * 0.25) : 0.3,
-    powerWords: clamp(emotionalScore * 0.8 + 0.1),
-    simplicity: clamp(wordCount < 200 ? 0.7 : 0.5),
-    rhetoricalDevices: clamp(hasQuestions + storyScore * 0.3),
-    messageClarity: clamp(0.5 + (wordCount > 20 ? 0.2 : 0)),
-    coherence: clamp(0.5 + storyScore * 0.3),
-    pacing: pacingScore,
-    hookStrength: clamp(emotionalScore * 0.4 + urgencyScore * 0.3 + 0.2),
-    storytelling: storyScore,
-    logicalStructure: clamp(dataScore * 0.5 + 0.3),
-    complexity: clamp(wordCount > 150 ? 0.6 : 0.4),
-    repetition: clamp(0.3 + Math.random() * 0.2),
-    callToAction: ctaScore,
-    valueProposition: clamp(ctaScore * 0.4 + emotionalScore * 0.3 + 0.2),
-    socialProof: socialScore,
-    exclusivity: clamp(urgencyScore * 0.5 + 0.1),
-    hasData: dataScore,
-    novelty: clamp(emotionalScore * 0.3 + 0.3 + Math.random() * 0.2),
-    personalRelevance: clamp(hasQuestions * 0.4 + 0.3),
-    contextRelevance: clamp(0.5 + Math.random() * 0.2),
-    socialContext: socialScore,
-    characterPresence: clamp(hasVideo ? 0.6 : 0.2 + storyScore * 0.3),
-    authenticity: clamp(0.5 + storyScore * 0.2 + Math.random() * 0.15),
-    energyLevel: clamp(emotionalScore * 0.5 + urgencyScore * 0.3 + 0.2),
+  // Parse features from structured response
+  const features = parseAnalysisToFeatures(responseText);
+
+  // Extract sections
+  const extractSection = (start: string, end?: string): string => {
+    const startIdx = responseText.indexOf(start);
+    if (startIdx === -1) return "";
+    const after = responseText.slice(startIdx + start.length);
+    if (end) {
+      const endIdx = after.indexOf(end);
+      return endIdx !== -1 ? after.slice(0, endIdx).trim() : after.trim();
+    }
+    return after.trim();
   };
 
-  const visualDesc = hasVideo
-    ? "The video features direct-to-camera presentation with dynamic framing. Face presence is strong, establishing personal connection. Visual composition uses natural lighting with moderate contrast, creating an authentic feel."
-    : "Static visual content with limited motion cues. The visual engagement relies primarily on composition and color rather than movement or facial expression.";
+  const visualDesc = extractSection("---VISUAL_ANALYSIS---", "---AUDIO_ANALYSIS---") || "Visual analysis unavailable.";
+  const audioDesc = extractSection("---AUDIO_ANALYSIS---", "---PACING_ANALYSIS---") || "Audio analysis unavailable.";
+  const pacingDesc = extractSection("---PACING_ANALYSIS---", "---EMOTION_BREAKDOWN---") || "Pacing analysis unavailable.";
 
-  const audioDesc = hasAudio
-    ? "Clear vocal delivery with natural pacing and tonal variation. The speaker's voice carries conviction and energy, which activates auditory processing centers effectively. Speech patterns show confident articulation."
-    : "No audio track detected. The content relies entirely on visual and textual elements for engagement.";
-
-  const pacingDesc = wordCount > 100
-    ? "Content maintains a steady pace with good rhythm. Information density is moderate, allowing for cognitive processing without overwhelming. Transitions between ideas are smooth."
-    : "Concise content with tight pacing. The brevity works well for attention capture but may limit depth of emotional engagement and memory encoding.";
-
+  // Parse emotion breakdown
+  const emotionSection = extractSection("---EMOTION_BREAKDOWN---", "---RECOMMENDATIONS---");
+  const parseEmotion = (key: string): number => {
+    const match = emotionSection.match(new RegExp(`${key}[:\\s]*([0-9.]+)`, "i"));
+    return match ? Math.min(1, parseFloat(match[1]) / 10) : 0.5;
+  };
   const emotionBreakdown = {
-    joy: clamp(emotionalScore * 0.6 + 0.1 + Math.random() * 0.15),
-    surprise: clamp(emotionalScore * 0.4 + hasQuestions * 0.3 + Math.random() * 0.1),
-    fear: clamp(urgencyScore * 0.5 + Math.random() * 0.1),
-    trust: clamp(socialScore * 0.4 + dataScore * 0.3 + 0.2 + Math.random() * 0.1),
-    anticipation: clamp(ctaScore * 0.4 + urgencyScore * 0.3 + 0.15 + Math.random() * 0.1),
-    sadness: clamp(0.05 + Math.random() * 0.1),
+    joy: parseEmotion("joy"),
+    surprise: parseEmotion("surprise"),
+    fear: parseEmotion("fear"),
+    trust: parseEmotion("trust"),
+    anticipation: parseEmotion("anticipation"),
+    sadness: parseEmotion("sadness"),
   };
 
-  const recommendations = [
-    emotionalScore < 0.5 ? "Increase emotional trigger words and vivid language to boost amygdala activation and emotional engagement" : "Strong emotional language detected — maintain current emotional intensity while ensuring authenticity",
-    ctaScore < 0.3 ? "Add a clear, compelling call-to-action to activate the motor cortex and drive behavioral response" : "Call-to-action present — consider making it more specific and time-bound for stronger motor cortex activation",
-    storyScore < 0.4 ? "Incorporate narrative elements or personal stories to enhance hippocampus engagement and improve memory retention by up to 22x" : "Good storytelling elements present — deepen the narrative arc for maximum hippocampal encoding",
-    hasVideo ? "Use more dynamic camera angles and visual transitions to maintain visual cortex stimulation throughout" : "Consider adding video/visual elements — visual content activates 30% more neural pathways than text alone",
-    pacingScore < 0.6 ? "Improve content pacing with strategic pauses and rhythm changes to maintain anterior cingulate attention" : "Good pacing detected — add micro-pauses before key points to amplify prefrontal cortex processing",
-  ];
+  // Parse recommendations
+  const recsSection = extractSection("---RECOMMENDATIONS---", "---DETAILED_ANALYSIS---");
+  const recommendations = recsSection
+    .split("\n")
+    .map((l) => l.replace(/^\d+\.\s*/, "").trim())
+    .filter((l) => l.length > 10)
+    .slice(0, 5);
 
-  const detailedAnalysis = `Neural response simulation indicates ${emotionalScore > 0.5 ? "strong" : "moderate"} emotional activation primarily in the ${emotionalScore > 0.5 ? "amygdala and limbic system" : "prefrontal cortex and anterior cingulate"} regions. ${storyScore > 0.3 ? "Narrative elements present in the content facilitate hippocampal memory encoding, suggesting higher long-term recall potential." : "The content would benefit from stronger narrative elements to improve hippocampal memory encoding."} ${ctaScore > 0.3 ? "Clear action cues activate the premotor cortex, creating an impulse to respond." : "Adding explicit calls-to-action would engage the premotor cortex and increase conversion potential."} The overall neural engagement pattern suggests this content is ${emotionalScore > 0.6 ? "highly" : urgencyScore > 0.4 ? "moderately" : "somewhat"} effective at driving the viewer toward the intended outcome. ${hasVideo ? "Face presence activates the fusiform face area, building social connection and trust signals." : ""} Nucleus accumbens activation is ${clamp(features.valueProposition) > 0.5 ? "elevated" : "moderate"}, indicating ${clamp(features.valueProposition) > 0.5 ? "strong" : "room to improve"} reward anticipation.`;
+  const detailedAnalysis = extractSection("---DETAILED_ANALYSIS---") || "Detailed analysis unavailable.";
 
   return { features, visualDesc, audioDesc, pacingDesc, emotionBreakdown, recommendations, detailedAnalysis };
-}
-
-function clamp(v: number): number {
-  return Math.min(1, Math.max(0, v));
 }
 
 async function processUrlInput(url: string): Promise<{
@@ -388,17 +366,21 @@ export async function POST(req: NextRequest) {
 
     const [resultA, resultB] = await Promise.all([processA, processB]);
 
-    // Analyze both
-    const analysisA = simulateAnalysis(
-      resultA.transcript,
-      resultA.isVideo,
-      resultA.isVideo || resultA.isAudio
-    );
-    const analysisB = simulateAnalysis(
-      resultB.transcript,
-      resultB.isVideo,
-      resultB.isVideo || resultB.isAudio
-    );
+    // Analyze both with AI (in parallel)
+    const [analysisA, analysisB] = await Promise.all([
+      aiAnalysis(
+        resultA.transcript,
+        resultA.frames,
+        resultA.isVideo,
+        resultA.isVideo || resultA.isAudio
+      ),
+      aiAnalysis(
+        resultB.transcript,
+        resultB.frames,
+        resultB.isVideo,
+        resultB.isVideo || resultB.isAudio
+      ),
+    ]);
 
     // Build neural analysis objects
     const neuralA = buildNeuralAnalysis(
