@@ -173,7 +173,22 @@ export default function Home() {
         <main className="fixed inset-0 top-[52px] overflow-hidden bg-[#0a0a0f]">
           {/* Brain fills entire background */}
           <div className="absolute inset-0 pointer-events-none" style={{ height: "65vh" }}>
-            <HeroBrain />
+            <Brain3D
+              regions={[
+                { name: "L-Frontal", id: "lf", role: "", position: [-0.4, 0.3, 0.7], activation: 0.85, color: "#ffaa00" },
+                { name: "R-Frontal", id: "rf", role: "", position: [0.4, 0.3, 0.7], activation: 0.80, color: "#ffcc00" },
+                { name: "L-Parietal", id: "lp", role: "", position: [-0.5, 0.5, 0.0], activation: 0.82, color: "#ff8800" },
+                { name: "R-Parietal", id: "rp", role: "", position: [0.5, 0.5, 0.0], activation: 0.72, color: "#ddcc00" },
+                { name: "L-Motor", id: "lm", role: "", position: [-0.3, 0.6, 0.2], activation: 0.88, color: "#ff6600" },
+                { name: "R-Motor", id: "rm", role: "", position: [0.3, 0.6, 0.2], activation: 0.75, color: "#ffaa00" },
+                { name: "L-Temporal", id: "lt", role: "", position: [-0.8, -0.1, 0.2], activation: 0.62, color: "#88cc00" },
+                { name: "R-Temporal", id: "rt", role: "", position: [0.8, -0.1, 0.2], activation: 0.52, color: "#44aa66" },
+                { name: "Prefrontal", id: "pfc", role: "", position: [0, 0.2, 0.9], activation: 0.82, color: "#ffbb00" },
+              ]}
+              className="w-full h-full"
+              autoRotate
+              showParticles
+            />
           </div>
 
           {/* Gradient overlay to fade brain into bottom section */}

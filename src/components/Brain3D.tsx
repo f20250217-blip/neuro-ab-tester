@@ -287,7 +287,7 @@ export function HeroBrain() {
     { name: "Central", id: "cen", role: "", position: [0, 0.6, 0.1], activation: 0.68, color: "#ddaa00" },
   ];
 
-  return <Brain3D regions={regions} className="w-full h-full" autoRotate showParticles />;
+  return <Brain3D regions={regions} className="w-full h-[420px]" autoRotate showParticles />;
 }
 
 useGLTF.preload("/models/brain.glb");
