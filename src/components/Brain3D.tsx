@@ -1,14 +1,13 @@
 "use client";
 
-import { useRef, useMemo, useState, useCallback } from "react";
+import { useRef, useMemo, useState, useEffect, useCallback } from "react";
 import { Canvas, useFrame, useThree } from "@react-three/fiber";
-import { OrbitControls, Float, useGLTF, Html } from "@react-three/drei";
+import { OrbitControls, Float, useGLTF } from "@react-three/drei";
 import * as THREE from "three";
 import { BrainRegion } from "@/lib/neuro-engine";
 
 /* ============================================
-   Custom brain shader — translucent with glow,
-   matching the reference image style
+   Custom brain shader — translucent with glow
    ============================================ */
 const vertShader = `
   varying vec3 vNormal;
@@ -37,42 +36,34 @@ const fragShader = `
   void main() {
     vec3 viewDir = normalize(uCamPos - vWorldPos);
 
-    // Multiple light sources
     vec3 light1 = normalize(vec3(0.5, 1.0, 0.5));
     vec3 light2 = normalize(vec3(-0.3, 0.5, -0.5));
     vec3 light3 = normalize(vec3(0.0, -0.3, 1.0));
 
-    // Diffuse
     float d1 = max(dot(vNormal, light1), 0.0);
     float d2 = max(dot(vNormal, light2), 0.0) * 0.4;
     float d3 = max(dot(vNormal, light3), 0.0) * 0.2;
     float diffuse = d1 + d2 + d3;
 
-    // Strong AO for deep sulci shadows
     float upDot = dot(vNormal, vec3(0.0, 1.0, 0.0));
     float ao = 0.4 + 0.6 * max(upDot, 0.0);
     ao = pow(ao, 0.7);
 
-    // Specular highlights on gyri ridges
     vec3 halfDir = normalize(light1 + viewDir);
     float spec = pow(max(dot(vNormal, halfDir), 0.0), 50.0) * 0.35;
 
-    // Fresnel rim glow - purple/blue like reference
     float fresnel = 1.0 - max(dot(viewDir, vNormal), 0.0);
     fresnel = pow(fresnel, 2.5);
     vec3 rimColor = mix(vec3(0.2, 0.1, 0.5), vec3(0.4, 0.2, 0.8), fresnel);
 
-    // Subsurface scattering - warm glow through brain tissue
     float sss = pow(max(dot(-vNormal, light1), 0.0), 1.5) * 0.12;
     vec3 sssColor = vec3(0.8, 0.4, 0.2) * sss;
 
-    // Combine
     vec3 col = vColor * (0.3 + diffuse * 0.7) * ao;
     col += spec * vec3(1.0, 0.95, 0.9);
     col += rimColor * fresnel * 0.3;
     col += sssColor;
 
-    // Neural activity pulse - subtle travelling wave
     float wave = sin(uTime * 2.0 + vPos.x * 3.0 + vPos.z * 2.0) * 0.015;
     col += wave * vColor;
 
@@ -81,13 +72,12 @@ const fragShader = `
 `;
 
 /* ============================================
-   BRAIN MESH — real MRI-derived model
+   BRAIN MESH
    ============================================ */
-function BrainMesh({ regions, autoRotate }: { regions: BrainRegion[]; autoRotate: boolean }) {
+function BrainMesh({ regions, autoRotate, isMobile }: { regions: BrainRegion[]; autoRotate: boolean; isMobile: boolean }) {
   const groupRef = useRef<THREE.Group>(null);
   const matRef = useRef<THREE.ShaderMaterial>(null);
   const { scene } = useGLTF("/models/brain.glb");
-  const { pointer } = useThree();
 
   const geometry = useMemo(() => {
     let geo: THREE.BufferGeometry | null = null;
@@ -98,13 +88,11 @@ function BrainMesh({ regions, autoRotate }: { regions: BrainRegion[]; autoRotate
     });
     if (!geo) geo = new THREE.SphereGeometry(1.3, 64, 48);
 
-    // Center
     geo.computeBoundingBox();
     const center = new THREE.Vector3();
     geo.boundingBox!.getCenter(center);
     geo.translate(-center.x, -center.y, -center.z);
 
-    // Scale to ~3 units
     geo.computeBoundingBox();
     const size = new THREE.Vector3();
     geo.boundingBox!.getSize(size);
@@ -115,7 +103,6 @@ function BrainMesh({ regions, autoRotate }: { regions: BrainRegion[]; autoRotate
     return geo;
   }, [scene]);
 
-  // Heatmap vertex colors
   const coloredGeo = useMemo(() => {
     const geo = geometry.clone();
     const pos = geo.attributes.position;
@@ -141,7 +128,6 @@ function BrainMesh({ regions, autoRotate }: { regions: BrainRegion[]; autoRotate
 
       if (tw > 0) { cr /= tw; cg /= tw; cb /= tw; }
 
-      // Base: teal/green gradient
       const hf = (v.y + 1.5) / 3.0;
       const bR = 0.08 + hf * 0.06;
       const bG = 0.35 + hf * 0.15;
@@ -165,11 +151,13 @@ function BrainMesh({ regions, autoRotate }: { regions: BrainRegion[]; autoRotate
   useFrame((state) => {
     if (groupRef.current) {
       if (autoRotate) groupRef.current.rotation.y += 0.002;
-      // Subtle mouse-reactive tilt
-      const targetX = pointer.y * 0.06;
-      const targetZ = -pointer.x * 0.06;
-      groupRef.current.rotation.x += (targetX - groupRef.current.rotation.x) * 0.03;
-      groupRef.current.rotation.z += (targetZ - groupRef.current.rotation.z) * 0.03;
+      // Mouse tilt — desktop only, skip on mobile to save perf
+      if (!isMobile) {
+        const targetX = state.pointer.y * 0.06;
+        const targetZ = -state.pointer.x * 0.06;
+        groupRef.current.rotation.x += (targetX - groupRef.current.rotation.x) * 0.03;
+        groupRef.current.rotation.z += (targetZ - groupRef.current.rotation.z) * 0.03;
+      }
     }
     if (matRef.current) {
       matRef.current.uniforms.uTime.value = state.clock.elapsedTime;
@@ -179,7 +167,6 @@ function BrainMesh({ regions, autoRotate }: { regions: BrainRegion[]; autoRotate
 
   return (
     <group ref={groupRef}>
-      {/* Main brain */}
       <mesh geometry={coloredGeo}>
         <shaderMaterial
           ref={matRef}
@@ -189,8 +176,6 @@ function BrainMesh({ regions, autoRotate }: { regions: BrainRegion[]; autoRotate
           transparent
         />
       </mesh>
-
-      {/* Subtle outer glow */}
       <mesh geometry={coloredGeo} scale={1.01}>
         <meshBasicMaterial color="#4422aa" transparent opacity={0.03} side={THREE.BackSide} />
       </mesh>
@@ -199,7 +184,7 @@ function BrainMesh({ regions, autoRotate }: { regions: BrainRegion[]; autoRotate
 }
 
 /* ============================================
-   NEURAL PATHWAYS — animated connections
+   NEURAL PATHWAYS — animated connections (desktop only)
    ============================================ */
 function NeuralPathways({ regions }: { regions: BrainRegion[] }) {
   const active = useMemo(() => regions.filter((r) => r.activation > 0.4).sort((a, b) => b.activation - a.activation).slice(0, 6), [regions]);
@@ -236,7 +221,7 @@ function NeuralPathways({ regions }: { regions: BrainRegion[] }) {
 
 function PathTube({ curve, strength, color, index }: { curve: THREE.QuadraticBezierCurve3; strength: number; color: THREE.Color; index: number }) {
   const meshRef = useRef<THREE.Mesh>(null);
-  const geo = useMemo(() => new THREE.TubeGeometry(curve, 20, 0.006 + strength * 0.008, 5, false), [curve, strength]);
+  const geo = useMemo(() => new THREE.TubeGeometry(curve, 16, 0.006 + strength * 0.008, 4, false), [curve, strength]);
 
   useFrame((state) => {
     if (meshRef.current) {
@@ -253,11 +238,11 @@ function PathTube({ curve, strength, color, index }: { curve: THREE.QuadraticBez
 }
 
 /* ============================================
-   FLOWING PARTICLES along pathways
+   FLOWING PARTICLES (desktop only)
    ============================================ */
 function FlowingParticles({ regions }: { regions: BrainRegion[] }) {
   const instancedRef = useRef<THREE.InstancedMesh>(null);
-  const COUNT = 40;
+  const COUNT = 30;
 
   const active = useMemo(() => regions.filter((r) => r.activation > 0.4).sort((a, b) => b.activation - a.activation).slice(0, 5), [regions]);
 
@@ -316,92 +301,46 @@ function FlowingParticles({ regions }: { regions: BrainRegion[] }) {
 
   return (
     <instancedMesh ref={instancedRef} args={[undefined, undefined, COUNT]}>
-      <sphereGeometry args={[1, 6, 6]} />
+      <sphereGeometry args={[1, 4, 4]} />
       <meshBasicMaterial transparent opacity={0.7} />
     </instancedMesh>
   );
 }
 
 /* ============================================
-   REGION NODES — interactive glowing spheres
+   REGION NODES — pulsing spheres (simplified)
    ============================================ */
-function RegionNodes({ regions, onHover, interactive }: {
-  regions: BrainRegion[];
-  onHover?: (region: BrainRegion | null) => void;
-  interactive?: boolean;
-}) {
-  return (
-    <group>
-      {regions.map((region) => (
-        <RegionNode key={region.id} region={region} onHover={onHover} interactive={interactive} />
-      ))}
-    </group>
-  );
-}
-
-function RegionNode({ region, onHover, interactive }: {
-  region: BrainRegion;
-  onHover?: (region: BrainRegion | null) => void;
-  interactive?: boolean;
-}) {
-  const meshRef = useRef<THREE.Mesh>(null);
-  const [hovered, setHovered] = useState(false);
-  const baseScale = 0.035 + region.activation * 0.045;
+function RegionNodes({ regions }: { regions: BrainRegion[] }) {
+  const instancedRef = useRef<THREE.InstancedMesh>(null);
+  const dummy = useMemo(() => new THREE.Object3D(), []);
+  const tempColor = useMemo(() => new THREE.Color(), []);
 
   useFrame((state) => {
-    if (meshRef.current) {
-      const pulse = 1 + Math.sin(state.clock.elapsedTime * 3 + region.activation * 10) * 0.12 * region.activation;
-      const targetScale = hovered ? baseScale * 1.6 : baseScale * pulse;
-      const cur = meshRef.current.scale.x;
-      const next = cur + (targetScale - cur) * 0.1;
-      meshRef.current.scale.setScalar(next);
+    if (!instancedRef.current) return;
+    const t = state.clock.elapsedTime;
+
+    for (let i = 0; i < regions.length; i++) {
+      const r = regions[i];
+      const baseScale = 0.035 + r.activation * 0.045;
+      const pulse = 1 + Math.sin(t * 3 + r.activation * 10) * 0.12 * r.activation;
+
+      dummy.position.set(...r.position);
+      dummy.scale.setScalar(baseScale * pulse);
+      dummy.updateMatrix();
+      instancedRef.current.setMatrixAt(i, dummy.matrix);
+
+      tempColor.set(r.color);
+      instancedRef.current.setColorAt(i, tempColor);
     }
+    instancedRef.current.instanceMatrix.needsUpdate = true;
+    if (instancedRef.current.instanceColor) instancedRef.current.instanceColor.needsUpdate = true;
   });
 
-  const handleOver = useCallback(() => {
-    if (!interactive) return;
-    setHovered(true);
-    onHover?.(region);
-    document.body.style.cursor = "pointer";
-  }, [interactive, onHover, region]);
-
-  const handleOut = useCallback(() => {
-    if (!interactive) return;
-    setHovered(false);
-    onHover?.(null);
-    document.body.style.cursor = "auto";
-  }, [interactive, onHover]);
-
   return (
-    <mesh ref={meshRef} position={region.position} onPointerOver={handleOver} onPointerOut={handleOut}>
-      <sphereGeometry args={[1, 10, 10]} />
-      <meshBasicMaterial color={region.color} transparent opacity={hovered ? 0.85 : 0.3 + region.activation * 0.35} />
-    </mesh>
-  );
-}
-
-/* ============================================
-   REGION TOOLTIP
-   ============================================ */
-function RegionTooltip({ region }: { region: BrainRegion | null }) {
-  if (!region) return null;
-  return (
-    <Html position={[region.position[0], region.position[1] + 0.2, region.position[2]]} center style={{ pointerEvents: "none" }}>
-      <div className="bg-[#0c0c14]/95 backdrop-blur-xl border border-[#2d2d50] rounded-xl px-4 py-2.5 shadow-2xl whitespace-nowrap"
-        style={{ boxShadow: `0 0 20px ${region.color}33, 0 8px 32px rgba(0,0,0,0.5)` }}>
-        <div className="flex items-center gap-2.5">
-          <div className="w-2.5 h-2.5 rounded-full" style={{ backgroundColor: region.color, boxShadow: `0 0 8px ${region.color}` }} />
-          <span className="text-xs font-bold text-[#f0f0f8]">{region.name}</span>
-        </div>
-        <p className="text-[10px] text-[#7a7a98] mt-1">{region.role}</p>
-        <div className="flex items-center gap-2 mt-1.5">
-          <div className="flex-1 h-1 bg-[#1e1e30] rounded-full overflow-hidden">
-            <div className="h-full rounded-full" style={{ width: `${region.activation * 100}%`, backgroundColor: region.color }} />
-          </div>
-          <span className="text-[10px] font-bold font-mono" style={{ color: region.color }}>{(region.activation * 100).toFixed(0)}%</span>
-        </div>
-      </div>
-    </Html>
+    <instancedMesh ref={instancedRef} args={[undefined, undefined, regions.length]}>
+      <sphereGeometry args={[1, 6, 6]} />
+      <meshBasicMaterial transparent opacity={0.45} />
+    </instancedMesh>
   );
 }
 
@@ -411,8 +350,8 @@ function RegionTooltip({ region }: { region: BrainRegion | null }) {
 function Particles() {
   const ref = useRef<THREE.Points>(null);
   const positions = useMemo(() => {
-    const arr = new Float32Array(60 * 3);
-    for (let i = 0; i < 60; i++) {
+    const arr = new Float32Array(40 * 3);
+    for (let i = 0; i < 40; i++) {
       const t = Math.random() * Math.PI * 2;
       const p = Math.acos(2 * Math.random() - 1);
       const r = 1.8 + Math.random() * 0.5;
@@ -448,48 +387,58 @@ interface Brain3DProps {
   interactive?: boolean;
 }
 
-export default function Brain3D({ regions, className = "", autoRotate = true, showParticles = false, interactive = false }: Brain3DProps) {
-  const [hoveredRegion, setHoveredRegion] = useState<BrainRegion | null>(null);
+export default function Brain3D({ regions, className = "", autoRotate = true, showParticles = false }: Brain3DProps) {
   const [isMobile, setIsMobile] = useState(false);
 
-  // Detect mobile once on mount
-  useMemo(() => {
-    if (typeof window !== "undefined") {
-      setIsMobile(window.innerWidth < 768 || "ontouchstart" in window);
-    }
+  useEffect(() => {
+    setIsMobile(window.innerWidth < 768 || "ontouchstart" in window);
   }, []);
 
   return (
-    <div className={className}>
+    <div className={className} style={{ willChange: "transform", contain: "layout style paint" }}>
       <Canvas
         camera={{ position: [0, 1.2, isMobile ? 4.5 : 3.5], fov: isMobile ? 48 : 38 }}
         dpr={isMobile ? [1, 1] : [1, 1.5]}
-        performance={{ min: isMobile ? 0.3 : 0.5 }}
-        gl={{ antialias: !isMobile, alpha: true, toneMapping: THREE.ACESFilmicToneMapping, toneMappingExposure: 1.1, powerPreference: isMobile ? "low-power" : "high-performance" }}
+        performance={{ min: 0.5 }}
+        gl={{
+          antialias: !isMobile,
+          alpha: true,
+          toneMapping: THREE.ACESFilmicToneMapping,
+          toneMappingExposure: 1.1,
+          powerPreference: "default",
+          stencil: false,
+          depth: true,
+        }}
         style={{ background: "transparent", touchAction: "pan-y" }}
       >
         <ambientLight intensity={0.2} />
         <directionalLight position={[3, 6, 4]} intensity={0.9} color="#ffffff" />
         {!isMobile && <directionalLight position={[-3, 3, -2]} intensity={0.3} color="#8888ff" />}
 
-        <Float speed={0.5} rotationIntensity={0.02} floatIntensity={0.06}>
-          <BrainMesh regions={regions} autoRotate={autoRotate} />
-          {!isMobile && <NeuralPathways regions={regions} />}
-          {!isMobile && <FlowingParticles regions={regions} />}
-          <RegionNodes regions={regions} onHover={setHoveredRegion} interactive={interactive && !isMobile} />
-          {hoveredRegion && !isMobile && <RegionTooltip region={hoveredRegion} />}
-        </Float>
+        {isMobile ? (
+          <>
+            <BrainMesh regions={regions} autoRotate={autoRotate} isMobile />
+            <RegionNodes regions={regions} />
+          </>
+        ) : (
+          <Float speed={0.5} rotationIntensity={0.02} floatIntensity={0.06}>
+            <BrainMesh regions={regions} autoRotate={autoRotate} isMobile={false} />
+            <NeuralPathways regions={regions} />
+            <FlowingParticles regions={regions} />
+            <RegionNodes regions={regions} />
+          </Float>
+        )}
 
         {showParticles && <Particles />}
         <OrbitControls
-          enableZoom={!isMobile}
+          enableZoom
           enablePan={false}
-          minDistance={3}
-          maxDistance={6}
+          minDistance={2.5}
+          maxDistance={7}
           enableDamping
-          dampingFactor={0.08}
-          rotateSpeed={isMobile ? 0.5 : 0.8}
-          zoomSpeed={0.5}
+          dampingFactor={0.15}
+          rotateSpeed={isMobile ? 0.6 : 0.8}
+          zoomSpeed={isMobile ? 0.8 : 0.6}
           touches={{ ONE: THREE.TOUCH.ROTATE, TWO: THREE.TOUCH.DOLLY_ROTATE }}
         />
       </Canvas>
@@ -516,7 +465,7 @@ export function HeroBrain() {
     { name: "Storytelling", id: "temporal", role: "Narrative understanding", position: [1.0, -0.3, 0.8], activation: 0.69, color: "#44aa88" },
   ];
 
-  return <Brain3D regions={regions} className="w-full h-[380px] sm:h-[420px] md:h-[550px]" autoRotate showParticles interactive />;
+  return <Brain3D regions={regions} className="w-full h-[380px] sm:h-[420px] md:h-[550px]" autoRotate showParticles />;
 }
 
 useGLTF.preload("/models/brain.glb");

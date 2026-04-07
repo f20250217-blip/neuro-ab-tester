@@ -145,14 +145,22 @@ export default function Home() {
     return () => { clearTimeout(first); clearInterval(interval); };
   }, [state]);
 
-  // Scroll reveal observer
+  // Scroll reveal observer — wait a tick for DOM to paint
   const observerRef = useRef<IntersectionObserver | null>(null);
   useEffect(() => {
-    observerRef.current = new IntersectionObserver((entries) => {
-      entries.forEach(e => { if (e.isIntersecting) { e.target.classList.add("revealed"); } });
-    }, { threshold: 0.15 });
-    document.querySelectorAll(".scroll-reveal").forEach(el => observerRef.current?.observe(el));
-    return () => observerRef.current?.disconnect();
+    if (state !== "home") return;
+    const timer = requestAnimationFrame(() => {
+      observerRef.current = new IntersectionObserver((entries) => {
+        entries.forEach(e => {
+          if (e.isIntersecting) {
+            e.target.classList.add("revealed");
+            observerRef.current?.unobserve(e.target); // stop watching once revealed
+          }
+        });
+      }, { threshold: 0.1, rootMargin: "0px 0px -40px 0px" });
+      document.querySelectorAll(".scroll-reveal").forEach(el => observerRef.current?.observe(el));
+    });
+    return () => { cancelAnimationFrame(timer); observerRef.current?.disconnect(); };
   }, [state]);
 
   // Animated number counter hook
