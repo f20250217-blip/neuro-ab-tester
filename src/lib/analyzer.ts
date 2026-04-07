@@ -1,4 +1,4 @@
-import { NeuralAnalysis, ComparisonResult, generateActivationMap, getActivationColor } from "./neuro-engine";
+import { NeuralAnalysis, ComparisonResult, generateActivationMap, getActivationColor, PerformancePrediction, PlatformScore, AttentionFlow, CreativeHealth, AudiencePersona } from "./neuro-engine";
 
 // Analyze content features and map to brain activations
 // This uses heuristic neuroscience mapping based on content characteristics
@@ -223,12 +223,58 @@ export function buildNeuralAnalysis(
   emotionBreakdown: NeuralAnalysis["emotionBreakdown"],
   recommendations: string[],
   detailedAnalysis: string,
-  thumbnail?: string
+  thumbnail?: string,
+  performancePrediction?: PerformancePrediction,
+  platformScores?: PlatformScore[],
+  attentionFlow?: AttentionFlow,
+  creativeHealth?: CreativeHealth,
+  audiencePersonas?: AudiencePersona[]
 ): NeuralAnalysis {
   const regionScores = analyzeContentFeatures(features);
   const regions = generateActivationMap(regionScores);
 
   const overallScore = Object.values(regionScores).reduce((a, b) => a + b, 0) / Object.values(regionScores).length;
+
+  const defaultPerformance: PerformancePrediction = {
+    overallScore: Math.round(overallScore * 100),
+    estimatedCTR: `${(overallScore * 3).toFixed(1)}% - ${(overallScore * 5).toFixed(1)}%`,
+    engagementRate: `${(overallScore * 4).toFixed(1)}%`,
+    conversionPotential: overallScore > 0.7 ? "Very High" : overallScore > 0.5 ? "High" : overallScore > 0.3 ? "Medium" : "Low",
+    viewThroughRate: `${(overallScore * 60 + 20).toFixed(0)}%`,
+    shareability: overallScore > 0.6 ? "High" : overallScore > 0.4 ? "Medium" : "Low",
+  };
+
+  const defaultPlatforms: PlatformScore[] = [
+    { platform: "Meta", score: Math.round(overallScore * 10 * 10) / 10, fit: "Good", tip: "Optimize for mobile-first viewing" },
+    { platform: "TikTok", score: Math.round(overallScore * 9 * 10) / 10, fit: "Good", tip: "Hook in first 0.5 seconds" },
+    { platform: "YouTube", score: Math.round(overallScore * 10 * 10) / 10, fit: "Good", tip: "Front-load the value proposition" },
+    { platform: "LinkedIn", score: Math.round(overallScore * 8 * 10) / 10, fit: "Average", tip: "Lead with professional credibility" },
+    { platform: "Display", score: Math.round(overallScore * 7 * 10) / 10, fit: "Average", tip: "Simplify visual hierarchy" },
+  ];
+
+  const defaultAttention: AttentionFlow = {
+    firstSecond: "Initial visual scan of primary focal point",
+    threeSeconds: "Key message registers with viewer",
+    fiveSeconds: "Full comprehension of value proposition",
+    attentionHotspots: ["Main subject", "Text/headline", "Brand logo"],
+    attentionWeaknesses: ["Background elements", "Secondary text"],
+  };
+
+  const defaultHealth: CreativeHealth = {
+    fatigueLifespanDays: Math.round(overallScore * 20 + 5),
+    fatigueReason: "Standard content lifecycle",
+    brandSafetyScore: 8,
+    brandSafetyFlags: [],
+    accessibilityScore: 6,
+    accessibilityIssues: [],
+  };
+
+  const defaultPersonas: AudiencePersona[] = [
+    { name: "Gen Z (18-24)", reaction: "Analysis pending", resonanceScore: 5, keyDrivers: [], turnoffs: [] },
+    { name: "Millennials (25-34)", reaction: "Analysis pending", resonanceScore: 5, keyDrivers: [], turnoffs: [] },
+    { name: "Parents (35-50)", reaction: "Analysis pending", resonanceScore: 5, keyDrivers: [], turnoffs: [] },
+    { name: "Professionals (30-45)", reaction: "Analysis pending", resonanceScore: 5, keyDrivers: [], turnoffs: [] },
+  ];
 
   return {
     contentId,
@@ -248,6 +294,11 @@ export function buildNeuralAnalysis(
     emotionBreakdown,
     recommendations,
     detailedAnalysis,
+    performancePrediction: performancePrediction || defaultPerformance,
+    platformScores: platformScores || defaultPlatforms,
+    attentionFlow: attentionFlow || defaultAttention,
+    creativeHealth: creativeHealth || defaultHealth,
+    audiencePersonas: audiencePersonas || defaultPersonas,
   };
 }
 

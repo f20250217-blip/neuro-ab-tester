@@ -1,6 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
-import { GoogleGenerativeAI } from "@google/generative-ai";
 import ytdl from "@distube/ytdl-core";
+import { callWithFallback } from "@/lib/llm-providers";
+import { runMultiAgentConsensus, blendFeatures } from "@/lib/multi-agent";
+import { runPremiumAnalysis } from "@/lib/premium-analysis";
 import {
   ContentFeatures,
   parseAnalysisToFeatures,
@@ -8,19 +10,18 @@ import {
   compareAnalyses,
 } from "@/lib/analyzer";
 import { NeuralAnalysis } from "@/lib/neuro-engine";
+import type { ChatCompletionMessageParam, ChatCompletionContentPart } from "openai/resources/chat/completions";
 
-const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY || "");
+// Route segment config for large uploads
+export const maxDuration = 120; // seconds
 
-// Allow larger uploads (up to 20MB)
-export const config = {
-  api: { bodyParser: false },
-};
+// --- System & Analysis Prompts (split for OpenAI chat format) ---
 
-const ANALYSIS_PROMPT = `You are a world-class neuromarketing scientist with 20+ years of expertise in consumer neuroscience, fMRI studies, eye-tracking research, and behavioral psychology. You have deep knowledge of how the brain processes marketing content based on peer-reviewed research from journals like the Journal of Consumer Psychology, NeuroImage, and the Journal of Marketing Research.
+const SYSTEM_PROMPT = `You are a world-class neuromarketing scientist with 20+ years of expertise in consumer neuroscience, fMRI studies, eye-tracking research, and behavioral psychology. You have deep knowledge of how the brain processes marketing content based on peer-reviewed research from journals like the Journal of Consumer Psychology, NeuroImage, and the Journal of Marketing Research.
 
-ANALYZE THIS CONTENT WITH EXTREME PRECISION. Do NOT give generic or inflated scores. Be brutally honest.
+ANALYZE THIS CONTENT WITH EXTREME PRECISION. Do NOT give generic or inflated scores. Be brutally honest.`;
 
-SCORING RULES (CRITICAL — follow these exactly):
+const SCORING_INSTRUCTIONS = `SCORING RULES (CRITICAL — follow these exactly):
 - 0-1: Feature is completely absent or anti-effective
 - 2-3: Feature is weak, barely present, amateur execution
 - 4-5: Feature is average, present but unremarkable — most generic content falls here
@@ -106,14 +107,14 @@ sadness: X
 ---DETAILED_ANALYSIS---
 [Provide 6-8 sentences of expert-level neural response analysis. Map specific content elements to specific brain regions: Prefrontal Cortex (decision-making), Amygdala (emotional processing), Hippocampus (memory formation), Visual Cortex (V1-V5 processing), Auditory Cortex, Broca's Area (language production), Wernicke's Area (comprehension), Nucleus Accumbens (reward/dopamine), Insula (empathy/trust), Anterior Cingulate (attention), Motor Cortex (action impulse), Temporal Pole (narrative). Discuss the likely fMRI activation pattern. Reference specific neuroscience findings (e.g., "faces activate the fusiform face area within 170ms" or "narrative transport increases oxytocin by up to 47%"). Predict real-world performance: estimated watch-through rate, recall likelihood after 24h, and conversion potential.]`;
 
-// Convert a File to base64 data
+// --- File/URL Helpers (preserved from original) ---
+
 async function fileToBase64(file: File): Promise<{ base64: string; mimeType: string }> {
   const bytes = await file.arrayBuffer();
   const base64 = Buffer.from(bytes).toString("base64");
   return { base64, mimeType: file.type };
 }
 
-// Social media platforms that need special handling
 const SOCIAL_PLATFORMS = [
   "youtube.com", "youtu.be",
   "instagram.com",
@@ -134,9 +135,7 @@ function isSocialMediaUrl(url: string): boolean {
   return SOCIAL_PLATFORMS.some((domain) => url.includes(domain));
 }
 
-// Download video from any social platform using cobalt API
 async function socialMediaToBase64(url: string): Promise<{ base64: string; mimeType: string }> {
-  // Try cobalt API (supports YouTube, Instagram, TikTok, Twitter, Facebook, Reddit, Pinterest, etc.)
   const cobaltInstances = [
     "https://api.cobalt.tools",
     "https://cobalt-api.ayo.tf",
@@ -161,12 +160,10 @@ async function socialMediaToBase64(url: string): Promise<{ base64: string; mimeT
 
       const cobaltData = await cobaltRes.json();
 
-      // cobalt returns a direct download URL or tunnel URL
       let downloadUrl = "";
       if (cobaltData.status === "redirect" || cobaltData.status === "tunnel") {
         downloadUrl = cobaltData.url;
       } else if (cobaltData.status === "picker" && cobaltData.picker?.length > 0) {
-        // For posts with multiple media, pick the first video or image
         const videoItem = cobaltData.picker.find((p: any) => p.type === "video") || cobaltData.picker[0];
         downloadUrl = videoItem.url;
       }
@@ -191,7 +188,6 @@ async function socialMediaToBase64(url: string): Promise<{ base64: string; mimeT
     }
   }
 
-  // Fallback for YouTube: try ytdl-core
   if (url.includes("youtube.com") || url.includes("youtu.be")) {
     try {
       return await youtubeWithYtdl(url);
@@ -204,7 +200,6 @@ async function socialMediaToBase64(url: string): Promise<{ base64: string; mimeT
   throw new Error("Could not download video from this URL. Please download it manually and upload the file.");
 }
 
-// YouTube download via ytdl-core
 async function youtubeWithYtdl(url: string): Promise<{ base64: string; mimeType: string }> {
   const stream = ytdl(url, {
     quality: "lowestvideo",
@@ -230,7 +225,6 @@ async function youtubeWithYtdl(url: string): Promise<{ base64: string; mimeType:
   };
 }
 
-// YouTube thumbnail fallback
 async function youtubeThumbFallback(url: string): Promise<{ base64: string; mimeType: string }> {
   const match = url.match(/(?:v=|youtu\.be\/)([a-zA-Z0-9_-]{11})/);
   if (!match) throw new Error("Could not extract YouTube video ID");
@@ -248,14 +242,11 @@ async function youtubeThumbFallback(url: string): Promise<{ base64: string; mime
   throw new Error("Could not fetch YouTube thumbnail");
 }
 
-// Download content from any URL
 async function urlToBase64(url: string): Promise<{ base64: string; mimeType: string }> {
-  // Handle social media platforms
   if (isSocialMediaUrl(url)) {
     return socialMediaToBase64(url);
   }
 
-  // Direct URL fetch for regular links
   const response = await fetch(url, {
     headers: {
       "User-Agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
@@ -284,7 +275,16 @@ async function urlToBase64(url: string): Promise<{ base64: string; mimeType: str
   return { base64, mimeType };
 }
 
-// Analyze content using Gemini AI
+// --- Content Type Detection ---
+
+function detectContentType(mimeType: string): "video" | "image" | "audio" {
+  if (mimeType.startsWith("video/")) return "video";
+  if (mimeType.startsWith("audio/")) return "audio";
+  return "image";
+}
+
+// --- AI Analysis using Groq/Cerebras ---
+
 async function aiAnalysis(
   contentData: { base64: string; mimeType: string },
   contentType: "video" | "image" | "audio"
@@ -298,60 +298,57 @@ async function aiAnalysis(
   detailedAnalysis: string;
   transcript: string;
 }> {
-  // Build parts — send the actual media to Gemini
-  const parts: Array<{ text: string } | { inlineData: { mimeType: string; data: string } }> = [];
-
-  // Add the media content directly
-  parts.push({
-    inlineData: {
-      mimeType: contentData.mimeType,
-      data: contentData.base64,
-    },
-  });
-
-  // Build context
+  // Build OpenAI-compatible message parts
+  const contentParts: ChatCompletionContentPart[] = [];
   let contextText = "";
+  let requiresVision = false;
+
   if (contentType === "video") {
-    contextText += "This is a VIDEO. Analyze it thoroughly — watch for visual elements, faces, colors, movement, composition, production quality, text overlays, and transitions. Also listen to and transcribe any audio/speech.\n\n";
+    // Send video directly to vision model (Llama 4 Scout supports video)
+    contextText = "This is a VIDEO. Analyze it thoroughly — watch for visual elements, faces, colors, movement, composition, production quality, text overlays, and transitions. Also listen to and transcribe any audio/speech.\n\n";
+    requiresVision = true;
+
+    contentParts.push({
+      type: "image_url",
+      image_url: { url: `data:${contentData.mimeType};base64,${contentData.base64}` },
+    });
   } else if (contentType === "image") {
-    contextText += "This is an IMAGE/AD. Analyze it thoroughly — look at visual elements, faces, colors, composition, text, branding, and design quality.\n\n";
+    contextText = "This is an IMAGE/AD. Analyze it thoroughly — look at visual elements, faces, colors, composition, text, branding, and design quality.\n\n";
+    requiresVision = true;
+
+    contentParts.push({
+      type: "image_url",
+      image_url: { url: `data:${contentData.mimeType};base64,${contentData.base64}` },
+    });
   } else {
-    contextText += "This is AUDIO content. Analyze the speech, tone, music, pacing, and emotional delivery.\n\n";
+    contextText = "This is AUDIO content. Analyze the speech, tone, music, pacing, and emotional delivery.\n\n";
+    requiresVision = false;
   }
 
   contextText += "IMPORTANT: First, if there is any speech/text in the content, transcribe it. Then analyze using the format below.\n\n";
   contextText += "---TRANSCRIPT---\n[Write the full transcript of any speech/text visible or audible. Write 'No speech detected' if none.]\n\n";
 
-  parts.push({ text: contextText + ANALYSIS_PROMPT });
+  // Add text instruction part
+  contentParts.push({
+    type: "text",
+    text: contextText + SCORING_INSTRUCTIONS,
+  });
 
-  // Try multiple models with fallback if rate-limited
-  const models = ["gemini-2.0-flash", "gemini-2.0-flash-lite", "gemini-2.5-flash", "gemini-2.5-flash-lite"];
-  let responseText = "";
-  let lastError: Error | null = null;
+  const messages: ChatCompletionMessageParam[] = [
+    { role: "system", content: SYSTEM_PROMPT },
+    { role: "user", content: contentParts },
+  ];
 
-  for (const modelName of models) {
-    try {
-      const model = genAI.getGenerativeModel({ model: modelName });
-      const result = await model.generateContent(parts);
-      responseText = result.response.text();
-      break;
-    } catch (err: any) {
-      lastError = err;
-      console.log(`Model ${modelName} failed: ${err.message?.slice(0, 100)}`);
-      if (!err.message?.includes("429") && !err.message?.includes("quota")) {
-        throw err; // Only retry on rate limits
-      }
-    }
-  }
+  const responseText = await callWithFallback({
+    messages,
+    requiresVision,
+    temperature: 0.3,
+    maxTokens: 4096,
+  });
 
-  if (!responseText && lastError) {
-    throw new Error("All AI models are rate-limited. Please wait a minute and try again.");
-  }
-
-  // Parse features from structured response
+  // Parse features from structured response (same parsing logic as before)
   const features = parseAnalysisToFeatures(responseText);
 
-  // Extract sections
   const extractSection = (start: string, end?: string): string => {
     const startIdx = responseText.indexOf(start);
     if (startIdx === -1) return "";
@@ -363,14 +360,11 @@ async function aiAnalysis(
     return after.trim();
   };
 
-  // Extract transcript from Gemini's response
   const transcript = extractSection("---TRANSCRIPT---", "emotional_intensity") || "";
-
   const visualDesc = extractSection("---VISUAL_ANALYSIS---", "---AUDIO_ANALYSIS---") || "Visual analysis unavailable.";
   const audioDesc = extractSection("---AUDIO_ANALYSIS---", "---PACING_ANALYSIS---") || "Audio analysis unavailable.";
   const pacingDesc = extractSection("---PACING_ANALYSIS---", "---EMOTION_BREAKDOWN---") || "Pacing analysis unavailable.";
 
-  // Parse emotion breakdown
   const emotionSection = extractSection("---EMOTION_BREAKDOWN---", "---RECOMMENDATIONS---");
   const parseEmotion = (key: string): number => {
     const match = emotionSection.match(new RegExp(`${key}[:\\s]*([0-9.]+)`, "i"));
@@ -385,7 +379,6 @@ async function aiAnalysis(
     sadness: parseEmotion("sadness"),
   };
 
-  // Parse recommendations
   const recsSection = extractSection("---RECOMMENDATIONS---", "---DETAILED_ANALYSIS---");
   const recommendations = recsSection
     .split("\n")
@@ -398,11 +391,7 @@ async function aiAnalysis(
   return { features, visualDesc, audioDesc, pacingDesc, emotionBreakdown, recommendations, detailedAnalysis, transcript };
 }
 
-function detectContentType(mimeType: string): "video" | "image" | "audio" {
-  if (mimeType.startsWith("video/")) return "video";
-  if (mimeType.startsWith("audio/")) return "audio";
-  return "image";
-}
+// --- Main API Handler ---
 
 export async function POST(req: NextRequest) {
   try {
@@ -421,7 +410,7 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: "Content B required (file or URL)" }, { status: 400 });
     }
 
-    // Get content as base64 (no filesystem needed)
+    // Get content as base64
     const [dataA, dataB] = await Promise.all([
       fileA ? fileToBase64(fileA) : urlToBase64(urlA!),
       fileB ? fileToBase64(fileB) : urlToBase64(urlB!),
@@ -430,27 +419,71 @@ export async function POST(req: NextRequest) {
     const typeA = detectContentType(dataA.mimeType);
     const typeB = detectContentType(dataB.mimeType);
 
-    // Analyze both with Gemini AI (in parallel)
+    // Layer 1: Direct vision analysis via Groq/Cerebras (in parallel)
     const [analysisA, analysisB] = await Promise.all([
       aiAnalysis(dataA, typeA),
       aiAnalysis(dataB, typeB),
     ]);
+
+    // Layer 2: Multi-agent consensus (if enabled)
+    let finalFeaturesA = analysisA.features;
+    let finalFeaturesB = analysisB.features;
+
+    if (process.env.ENABLE_MULTI_AGENT === "true") {
+      try {
+        const [consensusA, consensusB] = await Promise.all([
+          runMultiAgentConsensus(
+            analysisA.detailedAnalysis,
+            analysisA.transcript,
+            analysisA.visualDesc,
+            analysisA.audioDesc
+          ),
+          runMultiAgentConsensus(
+            analysisB.detailedAnalysis,
+            analysisB.transcript,
+            analysisB.visualDesc,
+            analysisB.audioDesc
+          ),
+        ]);
+
+        // Blend Layer 1 (40%) + Layer 2 (60%) for final scores
+        finalFeaturesA = blendFeatures(analysisA.features, consensusA);
+        finalFeaturesB = blendFeatures(analysisB.features, consensusB);
+      } catch (err: any) {
+        console.error("Multi-agent consensus failed, using Layer 1 only:", err.message);
+        // Graceful degradation: use Layer 1 results only
+      }
+    }
+
+    // Layer 3: Premium features (performance prediction, platform scores, etc.)
+    let premiumA = null;
+    let premiumB = null;
+    try {
+      [premiumA, premiumB] = await Promise.all([
+        runPremiumAnalysis(analysisA.detailedAnalysis, analysisA.transcript, analysisA.visualDesc, analysisA.audioDesc, analysisA.pacingDesc),
+        runPremiumAnalysis(analysisB.detailedAnalysis, analysisB.transcript, analysisB.visualDesc, analysisB.audioDesc, analysisB.pacingDesc),
+      ]);
+    } catch (err: any) {
+      console.error("Premium analysis failed, using defaults:", err.message);
+    }
 
     // Build neural analysis objects
     const thumbnailA = typeA === "image" ? `data:${dataA.mimeType};base64,${dataA.base64.slice(0, 50000)}` : undefined;
     const thumbnailB = typeB === "image" ? `data:${dataB.mimeType};base64,${dataB.base64.slice(0, 50000)}` : undefined;
 
     const neuralA = buildNeuralAnalysis(
-      "a", labelA, analysisA.features, analysisA.transcript,
+      "a", labelA, finalFeaturesA, analysisA.transcript,
       analysisA.visualDesc, analysisA.audioDesc, analysisA.pacingDesc,
       analysisA.emotionBreakdown, analysisA.recommendations, analysisA.detailedAnalysis,
-      thumbnailA
+      thumbnailA,
+      premiumA?.performancePrediction, premiumA?.platformScores, premiumA?.attentionFlow, premiumA?.creativeHealth, premiumA?.audiencePersonas
     );
     const neuralB = buildNeuralAnalysis(
-      "b", labelB, analysisB.features, analysisB.transcript,
+      "b", labelB, finalFeaturesB, analysisB.transcript,
       analysisB.visualDesc, analysisB.audioDesc, analysisB.pacingDesc,
       analysisB.emotionBreakdown, analysisB.recommendations, analysisB.detailedAnalysis,
-      thumbnailB
+      thumbnailB,
+      premiumB?.performancePrediction, premiumB?.platformScores, premiumB?.attentionFlow, premiumB?.creativeHealth, premiumB?.audiencePersonas
     );
 
     // Compare

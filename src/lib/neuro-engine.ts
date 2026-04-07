@@ -8,6 +8,47 @@ export interface BrainRegion {
   color: string;
 }
 
+export interface PerformancePrediction {
+  overallScore: number; // 1-100
+  estimatedCTR: string; // e.g., "1.2% - 2.4%"
+  engagementRate: string;
+  conversionPotential: string; // "Low" | "Medium" | "High" | "Very High"
+  viewThroughRate: string;
+  shareability: string;
+}
+
+export interface PlatformScore {
+  platform: string; // Meta, TikTok, YouTube, LinkedIn, Google Display
+  score: number; // 0-10
+  fit: string; // "Poor" | "Average" | "Good" | "Excellent"
+  tip: string; // one-liner optimization tip
+}
+
+export interface AttentionFlow {
+  firstSecond: string; // what's noticed first
+  threeSeconds: string; // what registers by 3s
+  fiveSeconds: string; // full comprehension by 5s
+  attentionHotspots: string[]; // top 3 visual elements that draw attention
+  attentionWeaknesses: string[]; // what gets missed
+}
+
+export interface CreativeHealth {
+  fatigueLifespanDays: number; // estimated days before fatigue
+  fatigueReason: string;
+  brandSafetyScore: number; // 0-10
+  brandSafetyFlags: string[];
+  accessibilityScore: number; // 0-10
+  accessibilityIssues: string[];
+}
+
+export interface AudiencePersona {
+  name: string; // e.g., "Gen Z (18-24)"
+  reaction: string; // 2-3 sentence reaction
+  resonanceScore: number; // 0-10
+  keyDrivers: string[]; // top 2 things that resonate
+  turnoffs: string[]; // top 2 things that don't work
+}
+
 export interface NeuralAnalysis {
   contentId: string;
   label: string;
@@ -33,6 +74,12 @@ export interface NeuralAnalysis {
   };
   recommendations: string[];
   detailedAnalysis: string;
+  // New premium features
+  performancePrediction: PerformancePrediction;
+  platformScores: PlatformScore[];
+  attentionFlow: AttentionFlow;
+  creativeHealth: CreativeHealth;
+  audiencePersonas: AudiencePersona[];
 }
 
 export interface ComparisonResult {
