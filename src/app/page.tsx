@@ -323,22 +323,16 @@ export default function Home() {
           </section>
 
           {/* Platform stats */}
-          <section className="border-y border-[#1e1e30]/40 bg-[#0c0c14]/50 mt-8 sm:mt-10">
-            <div className="max-w-5xl mx-auto px-4 md:px-6 py-5 sm:py-6">
-              <div className="grid grid-cols-4 gap-3 sm:gap-8">
-                {[
-                  { value: "5", label: "Expert Agents", color: "#7c6cf0" },
-                  { value: "12", label: "Brain Regions", color: "#9d8ff8" },
-                  { value: "37", label: "Features Scored", color: "#00e8b0" },
-                  { value: "7", label: "Analysis Modes", color: "#00c49a" },
-                ].map((stat) => (
-                  <div key={stat.label} className="text-center">
-                    <div className="text-xl sm:text-3xl md:text-4xl font-bold tabular-nums tracking-tight font-mono" style={{ color: stat.color }}>
-                      {stat.value}
-                    </div>
-                    <p className="text-[9px] sm:text-[11px] text-[#4a4a68] font-medium uppercase tracking-[0.1em] sm:tracking-[0.15em] mt-0.5 sm:mt-1">{stat.label}</p>
-                  </div>
-                ))}
+          <section className="mt-8 sm:mt-10">
+            <div className="max-w-4xl mx-auto px-4 md:px-6 py-5 sm:py-6">
+              <div className="flex items-center justify-center gap-4 sm:gap-6 text-[#4a4a68] text-xs sm:text-sm flex-wrap">
+                <span><strong className="text-[#7c6cf0] font-semibold">5</strong> expert agents</span>
+                <span className="text-[#1e1e30]">/</span>
+                <span><strong className="text-[#9d8ff8] font-semibold">12</strong> brain regions</span>
+                <span className="text-[#1e1e30]">/</span>
+                <span><strong className="text-[#00e8b0] font-semibold">37</strong> features scored</span>
+                <span className="text-[#1e1e30]">/</span>
+                <span><strong className="text-[#00c49a] font-semibold">7</strong> analysis modes</span>
               </div>
             </div>
           </section>
@@ -349,7 +343,7 @@ export default function Home() {
               <div className="relative glass-card rounded-3xl overflow-hidden group cursor-pointer" onClick={() => selectMode("ab-testing")}>
                 {/* Fake result preview */}
                 <div className="p-5 sm:p-8 relative">
-                  <div className="absolute inset-0 bg-gradient-to-t from-[#0a0a0f] via-transparent to-transparent z-20" />
+                  <div className="absolute inset-0 bg-gradient-to-t from-[#050508] via-transparent to-transparent z-20" />
                   <div className="filter blur-[6px] group-hover:blur-[3px] transition-all duration-700">
                     <div className="flex items-center gap-4 mb-6">
                       <div className="w-14 h-14 rounded-2xl bg-[#7c6cf0] flex items-center justify-center text-xl font-black text-white">A</div>
@@ -385,46 +379,47 @@ export default function Home() {
 
           {/* Analysis Modes */}
           <section id="modes" className="max-w-6xl mx-auto px-4 md:px-6 py-12 sm:py-20">
-            <div className="scroll-reveal">
-              <div className="text-center mb-8 sm:mb-12">
-                <p className="text-[10px] font-bold uppercase tracking-[0.3em] mb-3 text-[#7c6cf0]">Choose Your Analysis</p>
-                <h3 className="font-display text-xl sm:text-2xl md:text-4xl font-bold text-[#f0f0f8] tracking-[-0.02em]">
-                  7 Ways to Read Your Mind
+            <div className="scroll-reveal mb-8 sm:mb-12">
+              <div className="border-l-2 border-[#7c6cf0] pl-4">
+                <h3 className="font-display text-xl sm:text-2xl md:text-4xl font-bold tracking-[-0.02em]">
+                  <span className="gradient-text-shimmer">Seven analysis modes.</span>
                 </h3>
-                <p className="text-xs sm:text-sm text-[#4a4a68] mt-2 font-medium">Each mode uses a dedicated neural analysis pipeline.</p>
+                <p className="text-sm text-[#7a7a98] mt-2">Each one built for a different kind of content.</p>
               </div>
             </div>
 
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-4">
-              {MODES.map((m, i) => (
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-4" style={{ gridAutoRows: "minmax(140px, auto)" }}>
+              {MODES.map((m, i) => {
+                const icons = ["M13 10V3L4 14h7v7l9-11h-7z", "M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z", "M9 19V6l12-3v13M9 19c0 1.105-1.343 2-3 2s-3-.895-3-2 1.343-2 3-2 3 .895 3 2zm12-3c0 1.105-1.343 2-3 2s-3-.895-3-2 1.343-2 3-2 3 .895 3 2z", "M21 12a9 9 0 01-9 9m9-9a9 9 0 00-9-9m9 9H3m9 9a9 9 0 01-9-9m9 9c1.657 0 3-4.03 3-9s-1.343-9-3-9m0 18c-1.657 0-3-4.03-3-9s1.343-9 3-9m-9 9a9 9 0 019-9", "M17 8h2a2 2 0 012 2v6a2 2 0 01-2 2h-2v4l-4-4H9a1.994 1.994 0 01-1.414-.586m0 0L11 14h4a2 2 0 002-2V6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2v4l.586-.586z", "M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z", "M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"];
+                return (
                 <button
                   key={m.id}
                   onClick={() => selectMode(m.id)}
-                  className={`scroll-reveal relative group text-left glass-card glass-card-hover rounded-2xl p-5 sm:p-6 transition-all duration-500 active:scale-[0.97] hover:scale-[1.02]
-                    ${i === 0 ? "sm:col-span-2 lg:col-span-2" : ""}`}
-                  style={{ animationDelay: `${i * 60}ms` }}
+                  className={`scroll-reveal relative group text-left rounded-xl p-5 sm:p-6 transition-all duration-300 active:scale-[0.98] border border-[#1e1e30] hover:border-[${m.color}]/25
+                    ${i === 0 ? "sm:col-span-2 lg:col-span-2 sm:row-span-2" : ""}`}
+                  style={{ animationDelay: `${i * 60}ms`, background: i === 0 ? `linear-gradient(135deg, ${m.color}06, transparent 60%)` : "rgba(17, 17, 25, 0.6)" }}
                 >
                   {m.badge && (
-                    <div className="absolute -top-2 right-4 px-2.5 py-0.5 rounded text-[10px] font-medium bg-[var(--accent)] text-white">
+                    <div className="absolute top-4 right-4 px-2 py-0.5 rounded text-[9px] font-semibold uppercase tracking-wider" style={{ color: m.color, backgroundColor: `${m.color}12` }}>
                       {m.badge}
                     </div>
                   )}
-                  <div className={`flex ${i === 0 ? "flex-col sm:flex-row items-start" : "items-start"} gap-3.5`}>
-                    <div className="w-10 h-10 rounded-md flex items-center justify-center flex-shrink-0 border border-[var(--border)]"
-                      style={{ backgroundColor: `${m.color}08` }}>
-                      <div className="w-2.5 h-2.5 rounded-full" style={{ backgroundColor: m.color }} />
+                  <div className={`flex ${i === 0 ? "flex-col gap-4" : "items-start gap-3.5"}`}>
+                    <div className="w-9 h-9 rounded-lg flex items-center justify-center flex-shrink-0"
+                      style={{ backgroundColor: `${m.color}12` }}>
+                      <svg className="w-4 h-4" style={{ color: m.color }} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5} strokeLinecap="round" strokeLinejoin="round"><path d={icons[i]} /></svg>
                     </div>
                     <div className="flex-1 min-w-0">
-                      <h4 className={`${i === 0 ? "text-base" : "text-sm"} font-medium text-[var(--text-primary)] mb-1`}>{m.title}</h4>
-                      <p className={`${i === 0 ? "text-sm" : "text-xs"} text-[var(--text-secondary)] leading-relaxed ${i === 0 ? "" : "line-clamp-2"}`}>{m.desc}</p>
-                      <p className="text-[10px] font-medium mt-2 flex items-center gap-1.5 text-[var(--text-tertiary)] group-hover:text-[var(--text-secondary)] transition-colors">
+                      <h4 className={`${i === 0 ? "text-lg" : "text-sm"} font-semibold text-[#f0f0f8] mb-1.5`}>{m.title}</h4>
+                      <p className={`${i === 0 ? "text-sm" : "text-xs"} text-[#7a7a98] leading-relaxed`}>{m.desc}</p>
+                      <span className="inline-flex items-center gap-1 mt-3 text-[10px] font-medium transition-colors group-hover:text-[#f0f0f8]" style={{ color: m.color }}>
                         {m.acceptText}
-                        <svg className="w-3 h-3 transition-transform duration-150 group-hover:translate-x-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" /></svg>
-                      </p>
+                        <svg className="w-3 h-3 transition-transform duration-150 group-hover:translate-x-1" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M14 5l7 7m0 0l-7 7m7-7H3" /></svg>
+                      </span>
                     </div>
                   </div>
                 </button>
-              ))}
+              );})}
             </div>
           </section>
 
@@ -432,15 +427,13 @@ export default function Home() {
           <section className="border-t border-[var(--border)]">
             <div className="max-w-5xl mx-auto px-4 md:px-6 py-12 sm:py-20">
               <div className="scroll-reveal">
-                <div className="glass-card rounded-lg overflow-hidden">
+                <div className="glass-card rounded-xl overflow-hidden" style={{ background: "linear-gradient(135deg, rgba(124,108,240,0.04), rgba(17,17,25,0.95) 50%)" }}>
                   <div className="p-6 sm:p-10">
                     <div className="flex flex-col lg:flex-row items-center gap-8 lg:gap-12">
                       <div className="flex-1 text-center lg:text-left space-y-4">
-                        <div className="inline-flex items-center gap-2 px-2.5 py-1 rounded-md bg-[var(--accent-muted)] border border-[var(--border)]">
-                          <span className="text-[10px] font-medium text-[var(--accent)] uppercase tracking-wider">Browser Extension</span>
-                        </div>
-                        <h3 className="font-display text-2xl sm:text-3xl font-medium text-[var(--text-primary)] leading-tight">
-                          Real-time neural mapping<br />
+                        <span className="text-[11px] font-semibold text-[#7c6cf0] uppercase tracking-[0.15em]">Browser Extension</span>
+                        <h3 className="font-display text-2xl sm:text-3xl font-bold text-[#f0f0f8] leading-tight">
+                          <span className="gradient-text">Real-time neural mapping</span><br />
                           of your browsing behavior
                         </h3>
                         <p className="text-sm text-[var(--text-secondary)] max-w-md mx-auto lg:mx-0 leading-relaxed">
@@ -512,52 +505,66 @@ export default function Home() {
 
           {/* How It Works */}
           <section className="border-t border-[var(--border)]">
-            <div className="max-w-5xl mx-auto px-4 md:px-6 py-12 sm:py-20">
-              <div className="scroll-reveal mb-8 sm:mb-12">
-                <h3 className="font-display text-xl sm:text-2xl md:text-3xl font-medium text-[var(--text-primary)]">How it works</h3>
-                <p className="text-sm text-[var(--text-secondary)] mt-2">Three steps, under 30 seconds, no account required.</p>
+            <div className="max-w-5xl mx-auto px-4 md:px-6 py-10 sm:py-16">
+              <div className="scroll-reveal mb-10 sm:mb-14">
+                <h3 className="font-display text-xl sm:text-2xl md:text-3xl font-bold text-[#f0f0f8]">
+                  How it <span className="gradient-text">works</span>
+                </h3>
+                <p className="text-sm text-[#7a7a98] mt-1.5">Under 30 seconds. No account.</p>
               </div>
 
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-3 sm:gap-4">
-                {[
-                  { step: "1", title: "Upload your content", desc: "Drag any file — video, image, audio — or paste a URL. All major formats and platforms supported." },
-                  { step: "2", title: "Multi-agent analysis", desc: "Five specialized agents — neuroscientist, psychologist, creative director, marketer, economist — each score independently." },
-                  { step: "3", title: "Get your neural map", desc: "See which brain regions activate, get consensus scores across 37 features, and receive optimization recommendations." },
-                ].map((item) => (
-                  <div key={item.step} className="scroll-reveal glass-card glass-card-hover rounded-lg p-5 sm:p-6" style={{ animationDelay: `${parseInt(item.step) * 60}ms` }}>
-                    <div className="w-8 h-8 rounded-md flex items-center justify-center text-sm font-medium mb-4 border border-[var(--border)] text-[var(--accent)] bg-[var(--accent-muted)]">
-                      {item.step}
+              <div className="scroll-reveal relative">
+                {/* Connecting line — desktop only */}
+                <div className="hidden md:block absolute top-6 left-[calc(16.67%)] right-[calc(16.67%)] h-px bg-gradient-to-r from-[#7c6cf0]/30 via-[#00e8b0]/20 to-[#ff6090]/30" />
+
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-8 md:gap-6">
+                  {[
+                    { step: "01", title: "Upload", desc: "Drag a file or paste any URL. Video, image, audio — all formats.", color: "#7c6cf0" },
+                    { step: "02", title: "Analyze", desc: "Five expert agents score independently. Consensus removes bias.", color: "#00e8b0" },
+                    { step: "03", title: "Map", desc: "See 12 brain regions light up. 37 features. Actionable insights.", color: "#ff6090" },
+                  ].map((item, idx) => (
+                    <div key={item.step} className="relative" style={{ animationDelay: `${idx * 80}ms` }}>
+                      <div className="flex md:flex-col items-start md:items-center gap-4 md:gap-3 md:text-center">
+                        <div className="w-12 h-12 rounded-full flex items-center justify-center text-sm font-bold relative z-10 flex-shrink-0"
+                          style={{ backgroundColor: `${item.color}12`, color: item.color, boxShadow: `0 0 20px ${item.color}15` }}>
+                          {item.step}
+                        </div>
+                        <div>
+                          <h4 className="text-base font-semibold text-[#f0f0f8] mb-1">{item.title}</h4>
+                          <p className="text-sm text-[#7a7a98] leading-relaxed max-w-[240px]">{item.desc}</p>
+                        </div>
+                      </div>
                     </div>
-                    <h4 className="text-sm font-medium text-[var(--text-primary)] mb-2">{item.title}</h4>
-                    <p className="text-sm text-[var(--text-secondary)] leading-relaxed">{item.desc}</p>
-                  </div>
-                ))}
+                  ))}
+                </div>
               </div>
             </div>
           </section>
 
           {/* Agent Panel */}
-          <section className="border-t border-[var(--border)]">
-            <div className="max-w-5xl mx-auto px-4 md:px-6 py-12 sm:py-20">
-              <div className="scroll-reveal mb-8 sm:mb-12">
-                <h3 className="font-display text-xl sm:text-2xl md:text-3xl font-medium text-[var(--text-primary)]">The consensus panel</h3>
-                <p className="text-sm text-[var(--text-secondary)] mt-2 max-w-lg">Each agent scores independently. Trimmed-mean aggregation drops the highest and lowest — no single model bias can skew results.</p>
+          <section className="divider-gradient">
+            <div className="max-w-5xl mx-auto px-4 md:px-6 py-16 sm:py-28">
+              <div className="scroll-reveal mb-10 sm:mb-14 max-w-xl">
+                <h3 className="font-display text-xl sm:text-2xl md:text-3xl font-bold text-[#f0f0f8]">
+                  Five experts. One <span className="text-[#7c6cf0]">consensus</span>.
+                </h3>
+                <p className="text-sm text-[#7a7a98] mt-2 leading-relaxed">Each agent scores independently. Trimmed-mean aggregation drops outliers — no single model bias can skew your results.</p>
               </div>
 
-              <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3">
+              <div className="scroll-reveal grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-0 border border-[#1e1e30] rounded-xl overflow-hidden">
                 {[
-                  { name: "Neuromarketing Scientist", focus: "Brain activation & fMRI patterns" },
-                  { name: "Consumer Psychologist", focus: "Cognitive biases & persuasion" },
-                  { name: "Creative Director", focus: "Production quality & storytelling" },
-                  { name: "Performance Marketer", focus: "CTR signals & conversion" },
-                  { name: "Behavioral Economist", focus: "Loss aversion & anchoring" },
+                  { name: "Neuroscientist", focus: "Brain activation patterns", color: "#7c6cf0", icon: "M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z" },
+                  { name: "Psychologist", focus: "Cognitive biases", color: "#00e8b0", icon: "M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z" },
+                  { name: "Creative Director", focus: "Production & craft", color: "#ff6090", icon: "M15 10l4.553-2.276A1 1 0 0121 8.618v6.764a1 1 0 01-1.447.894L15 14M5 18h8a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z" },
+                  { name: "Performance Marketer", focus: "Conversion signals", color: "#ffb020", icon: "M13 7h8m0 0v8m0-8l-8 8-4-4-6 6" },
+                  { name: "Behavioral Economist", focus: "Decision framing", color: "#9d8ff8", icon: "M9 7h6m0 10v-3m-3 3h.01M9 17h.01M9 14h.01M12 14h.01M15 11h.01M12 11h.01M9 11h.01M7 21h10a2 2 0 002-2V5a2 2 0 00-2-2H7a2 2 0 00-2 2v14a2 2 0 002 2z" },
                 ].map((agent, i) => (
-                  <div key={agent.name} className="scroll-reveal glass-card glass-card-hover rounded-lg p-4 sm:p-5 text-center" style={{ animationDelay: `${i * 50}ms` }}>
-                    <div className="w-9 h-9 rounded-full mx-auto mb-2.5 flex items-center justify-center border border-[var(--border)] bg-[var(--accent-muted)]">
-                      <div className="w-2 h-2 rounded-full bg-[var(--accent)]" />
+                  <div key={agent.name} className={`flex items-start gap-3 p-4 sm:p-5 ${i < 4 ? "lg:border-r border-b lg:border-b-0" : ""} ${i < 3 ? "sm:border-r" : ""} border-[#1e1e30] hover:bg-[#0c0c14]/80 transition-colors`}>
+                    <svg className="w-4 h-4 flex-shrink-0 mt-0.5" style={{ color: agent.color }} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5} strokeLinecap="round" strokeLinejoin="round"><path d={agent.icon} /></svg>
+                    <div>
+                      <h4 className="text-xs font-semibold text-[#f0f0f8] mb-0.5">{agent.name}</h4>
+                      <p className="text-[10px] text-[#4a4a68]">{agent.focus}</p>
                     </div>
-                    <h4 className="text-[11px] sm:text-xs font-medium text-[var(--text-primary)] mb-1 leading-tight">{agent.name}</h4>
-                    <p className="text-[10px] text-[var(--text-tertiary)] leading-relaxed">{agent.focus}</p>
                   </div>
                 ))}
               </div>
@@ -565,18 +572,21 @@ export default function Home() {
           </section>
 
           {/* CTA */}
-          <section className="border-t border-[var(--border)]">
-            <div className="max-w-3xl mx-auto px-4 md:px-6 py-16 sm:py-24 text-center">
+          <section className="relative overflow-hidden">
+            <div className="absolute inset-0 pointer-events-none">
+              <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[500px] h-[300px] bg-[#7c6cf0]/[0.06] rounded-full blur-[100px]" />
+            </div>
+            <div className="max-w-3xl mx-auto px-4 md:px-6 py-20 sm:py-32 text-center relative z-10">
               <div className="scroll-reveal">
-                <h3 className="font-display text-2xl sm:text-3xl md:text-4xl font-medium text-[var(--text-primary)] tracking-tight mb-4">
-                  Ready to see what your brain thinks?
+                <h3 className="font-display text-2xl sm:text-3xl md:text-5xl font-bold tracking-tight mb-4">
+                  <span className="gradient-text-shimmer">Ready to decode your brain?</span>
                 </h3>
-                <p className="text-sm text-[var(--text-secondary)] mb-8 max-w-md mx-auto">
-                  Free. No account needed. Results in under 30 seconds.
+                <p className="text-sm text-[#7a7a98] mb-8 max-w-md mx-auto">
+                  Free. No account. Results in 30 seconds.
                 </p>
                 <button
                   onClick={() => selectMode("ab-testing")}
-                  className="px-8 sm:px-10 py-3.5 sm:py-4 rounded-lg bg-[var(--accent)] hover:bg-[var(--accent-hover)] text-white font-medium text-sm sm:text-base inline-flex items-center gap-2.5 transition-colors"
+                  className="px-8 sm:px-10 py-3.5 sm:py-4 rounded-xl bg-[#7c6cf0] hover:bg-[#8d7ff8] text-white font-semibold text-sm sm:text-base inline-flex items-center gap-2.5 transition-all duration-200 active:scale-[0.97] shadow-[0_4px_30px_rgba(124,108,240,0.3)]"
                 >
                   Start Neural Scan
                   <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M14 5l7 7m0 0l-7 7m7-7H3" /></svg>
