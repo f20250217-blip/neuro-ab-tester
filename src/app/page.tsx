@@ -338,39 +338,135 @@ export default function Home() {
             </div>
           </section>
 
-          {/* Blurred Preview Teaser */}
-          <section className="max-w-5xl mx-auto px-4 md:px-6 py-10 sm:py-14">
+          {/* Sample Result Preview */}
+          <section className="max-w-xl mx-auto px-4 md:px-6 py-10 sm:py-14">
             <div className="scroll-reveal">
-              <div className="relative glass-card rounded-3xl overflow-hidden group cursor-pointer" onClick={() => selectMode("ab-testing")}>
-                {/* Fake result preview */}
-                <div className="p-5 sm:p-8 relative">
-                  <div className="absolute inset-0 bg-gradient-to-t from-[#050508] via-transparent to-transparent z-20" />
-                  <div className="filter blur-[6px] group-hover:blur-[3px] transition-all duration-700">
-                    <div className="flex items-center gap-4 mb-6">
-                      <div className="w-14 h-14 rounded-2xl bg-[#7c6cf0] flex items-center justify-center text-xl font-black text-white">A</div>
-                      <div className="flex-1">
-                        <div className="h-3 bg-[#1e1e30] rounded-full w-1/3 mb-2" />
-                        <div className="h-2 bg-[#1e1e30]/50 rounded-full w-1/2" />
+              {/* Section label */}
+              <div className="text-center mb-6">
+                <span className="text-[10px] font-bold text-[#4a4a68] uppercase tracking-[0.2em]">Sample Result</span>
+                <p className="text-sm text-[#7a7a98] mt-1">Here&apos;s what your neural report looks like</p>
+              </div>
+
+              {/* Demo card wrapper — clickable */}
+              <div className="relative group cursor-pointer" onClick={() => { document.getElementById("modes")?.scrollIntoView({ behavior: "smooth" }); }}>
+                {/* DEMO badge */}
+                <div className="absolute top-4 right-4 z-30 px-2.5 py-1 rounded-full bg-[#7c6cf0]/15 border border-[#7c6cf0]/25 backdrop-blur-sm">
+                  <span className="text-[9px] font-black text-[#9d8ff8] uppercase tracking-[0.12em]">Demo</span>
+                </div>
+
+                {/* The card — slight blur on bottom to tease */}
+                <div
+                  className="relative overflow-hidden rounded-3xl transition-all duration-500 group-hover:scale-[1.01]"
+                  style={{ background: "linear-gradient(145deg, #0c0c18 0%, #08080f 50%, #060610 100%)", border: "1px solid rgba(124,108,240,0.12)" }}
+                >
+                  {/* Ambient glows */}
+                  <div className="absolute top-[-60px] right-[-40px] w-[250px] h-[250px] rounded-full blur-[100px] opacity-[0.18]" style={{ background: "#7c6cf0" }} />
+                  <div className="absolute bottom-[-50px] left-[-30px] w-[200px] h-[200px] rounded-full blur-[90px] opacity-[0.12]" style={{ background: "#00e8b0" }} />
+                  <div className="absolute inset-0 opacity-[0.02]" style={{ backgroundImage: "linear-gradient(rgba(124,108,240,0.4) 1px, transparent 1px), linear-gradient(90deg, rgba(124,108,240,0.4) 1px, transparent 1px)", backgroundSize: "40px 40px" }} />
+
+                  <div className="relative p-6 sm:p-8">
+                    {/* Header */}
+                    <div className="flex items-center justify-between mb-6">
+                      <div className="flex items-center gap-2">
+                        <div className="w-7 h-7 rounded-lg bg-[#7c6cf0] flex items-center justify-center" style={{ boxShadow: "0 0 12px rgba(124,108,240,0.3)" }}>
+                          <svg className="w-3.5 h-3.5 text-white" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.5} strokeLinecap="round" strokeLinejoin="round"><path d="M2 12h4l3-7 3.5 14 3-12 2.5 5H22" /></svg>
+                        </div>
+                        <span className="text-[11px] font-bold text-[#7a7a98] uppercase tracking-[0.15em]">NeuroTest</span>
                       </div>
-                      <div className="text-4xl font-black text-[#00e8b0]">8.7</div>
+                      <div className="px-3 py-1 rounded-full flex items-center gap-1.5" style={{ background: "#00e8b012", border: "1px solid #00e8b025" }}>
+                        <div className="w-1.5 h-1.5 rounded-full bg-[#00e8b0]" style={{ boxShadow: "0 0 6px #00e8b0" }} />
+                        <span className="text-[10px] font-black text-[#00e8b0] uppercase tracking-[0.1em]">EXCEPTIONAL</span>
+                      </div>
                     </div>
-                    <div className="grid grid-cols-2 sm:grid-cols-5 gap-3">
-                      {["Emotional", "Memory", "Decision", "Attention", "Trust"].map((l, i) => (
-                        <div key={l} className="bg-[#0c0c14] rounded-xl p-3 border border-[#1e1e30]/30">
-                          <div className="h-2 bg-[#1e1e30]/50 rounded-full w-2/3 mb-2" />
-                          <div className="h-1.5 rounded-full" style={{ width: `${60 + i * 8}%`, background: `linear-gradient(90deg, #7c6cf0, #00e8b0)` }} />
+
+                    {/* Score ring + archetype */}
+                    <div className="flex items-center gap-5 sm:gap-7 mb-6">
+                      <div className="relative flex-shrink-0">
+                        <div className="absolute inset-[-4px] rounded-full opacity-30 blur-[8px]" style={{ background: "conic-gradient(from 0deg, #7c6cf0, transparent 82%, transparent)" }} />
+                        <svg width="120" height="120" viewBox="0 0 128 128" className="transform -rotate-90 relative">
+                          <circle cx="64" cy="64" r="54" fill="none" stroke="#1e1e30" strokeWidth="5" />
+                          <circle cx="64" cy="64" r="54" fill="none" stroke="url(#demoGrad)" strokeWidth="5" strokeLinecap="round" strokeDasharray={`${(82 / 100) * (2 * Math.PI * 54)} ${2 * Math.PI * 54}`} style={{ filter: "drop-shadow(0 0 10px rgba(124,108,240,0.5))" }} />
+                          <defs><linearGradient id="demoGrad" x1="0%" y1="0%" x2="100%" y2="0%"><stop offset="0%" stopColor="#7c6cf0" /><stop offset="100%" stopColor="#00e8b0" /></linearGradient></defs>
+                        </svg>
+                        <div className="absolute inset-0 flex flex-col items-center justify-center">
+                          <span className="text-[38px] font-black tabular-nums text-[#f0f0f8] leading-none" style={{ textShadow: "0 0 20px rgba(124,108,240,0.2)" }}>82</span>
+                          <span className="text-[10px] text-[#4a4a68] font-semibold">/100</span>
+                        </div>
+                      </div>
+
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center gap-2 mb-1">
+                          <span className="text-lg">{"\uD83E\uDDE0"}</span>
+                          <span className="text-[10px] font-bold text-[#4a4a68] uppercase tracking-[0.15em]">Photo Analysis</span>
+                        </div>
+                        <h3 className="text-[26px] sm:text-[32px] font-black bg-gradient-to-r from-[#7c6cf0] to-[#00e8b0] bg-clip-text text-transparent leading-[1.1]">The Architect</h3>
+                        <p className="text-[11px] text-[#7a7a98] mt-1.5 leading-relaxed">Your patterns leave permanent neural imprints others can&apos;t replicate</p>
+                      </div>
+                    </div>
+
+                    {/* Social proof */}
+                    <div className="flex items-center gap-3 mb-5 px-3.5 py-2.5 rounded-xl bg-[#0c0c14]/80 border border-[#1e1e30]/30">
+                      <div className="flex items-center gap-1.5">
+                        <svg className="w-3.5 h-3.5 text-[#00e8b0]" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round"><path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z" /></svg>
+                        <span className="text-[11px] font-bold text-[#00e8b0]">Top 12%</span>
+                      </div>
+                      <div className="w-px h-3 bg-[#1e1e30]" />
+                      <span className="text-[11px] text-[#7a7a98]">Outperforms <strong className="text-[#f0f0f8]">88%</strong> of analyzed patterns</span>
+                    </div>
+
+                    {/* 3 metrics */}
+                    <div className="grid grid-cols-3 gap-2.5 mb-5">
+                      {[
+                        { label: "Emotion", value: 8.4, emoji: "\u2764\uFE0F" },
+                        { label: "Memory", value: 8.7, emoji: "\uD83E\uDDE0" },
+                        { label: "Focus", value: 7.2, emoji: "\uD83D\uDC41\uFE0F" },
+                      ].map((m) => (
+                        <div key={m.label} className="rounded-xl p-3 text-center border border-[#1e1e30]/30" style={{ background: "rgba(12,12,20,0.7)" }}>
+                          <div className="text-sm mb-1">{m.emoji}</div>
+                          <div className="text-[18px] font-black tabular-nums text-[#f0f0f8]">{m.value}</div>
+                          <div className="text-[9px] text-[#4a4a68] font-semibold uppercase tracking-wider mb-2">{m.label}</div>
+                          <div className="h-1 rounded-full bg-[#1e1e30] overflow-hidden">
+                            <div className="h-full rounded-full" style={{ width: `${(m.value / 10) * 100}%`, background: "linear-gradient(90deg, #7c6cf0, #00e8b0)" }} />
+                          </div>
                         </div>
                       ))}
                     </div>
-                  </div>
-                  {/* Overlay CTA */}
-                  <div className="absolute inset-0 z-30 flex items-center justify-center">
-                    <div className="text-center space-y-3">
-                      <div className="w-14 h-14 sm:w-16 sm:h-16 mx-auto rounded-2xl bg-gradient-to-br from-[#7c6cf0] to-[#00e8b0] flex items-center justify-center shadow-2xl shadow-[#7c6cf0]/30 group-hover:scale-110 transition-transform duration-500">
-                        <svg className="w-7 h-7 sm:w-8 sm:h-8 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M14.752 11.168l-3.197-2.132A1 1 0 0010 9.87v4.263a1 1 0 001.555.832l3.197-2.132a1 1 0 000-1.664z" /><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
+
+                    {/* Insight */}
+                    <div className="rounded-xl p-4 mb-5 relative overflow-hidden" style={{ background: "linear-gradient(135deg, rgba(124,108,240,0.06), rgba(0,232,176,0.03))", border: "1px solid rgba(124,108,240,0.1)" }}>
+                      <div className="absolute top-0 left-0 w-1 h-full rounded-r" style={{ background: "linear-gradient(180deg, #7c6cf0, #00e8b0)" }} />
+                      <p className="text-[12px] text-[#c4bfff] leading-[1.7] pl-3 italic">&ldquo;Exceptional memory encoding detected. Your neural patterns create sticky impressions that persist long after exposure.&rdquo;</p>
+                    </div>
+
+                    {/* Brain regions */}
+                    <div className="flex flex-wrap gap-1.5 mb-5">
+                      {[
+                        { name: "Memory", pct: 94, color: "#ff4500" },
+                        { name: "Decision Making", pct: 87, color: "#ffaa00" },
+                        { name: "Emotions", pct: 82, color: "#ff4500" },
+                      ].map((r, i) => (
+                        <span key={r.name} className="px-2.5 py-1.5 rounded-lg text-[10px] font-bold border bg-[#050508]/50 flex items-center gap-1.5" style={{ color: r.color, borderColor: `${r.color}20` }}>
+                          <span className="text-[8px]">{i === 0 ? "\uD83D\uDD25" : i === 1 ? "\u26A1" : "\u2728"}</span>
+                          {r.name} {r.pct}%
+                        </span>
+                      ))}
+                    </div>
+
+                    {/* Footer */}
+                    <div className="flex items-center justify-between pt-4 border-t border-[#1e1e30]/25">
+                      <div className="flex items-center gap-1.5">
+                        <div className="w-1 h-1 rounded-full bg-[#00e8b0]" style={{ boxShadow: "0 0 4px #00e8b0" }} />
+                        <span className="text-[10px] text-[#4a4a68]">5 AI agents &middot; 37 features &middot; 12 brain regions</span>
                       </div>
-                      <p className="text-sm sm:text-base font-bold text-[#f0f0f8]">See Your Neural Report</p>
-                      <p className="text-[11px] text-[#7a7a98]">Takes 30 seconds. No signup needed.</p>
+                      <span className="text-[11px] font-bold text-[#7c6cf0]">neurotest.live</span>
+                    </div>
+                  </div>
+
+                  {/* Bottom fade + CTA overlay */}
+                  <div className="absolute inset-x-0 bottom-0 h-32 bg-gradient-to-t from-[#060610] via-[#060610]/90 to-transparent z-20 flex items-end justify-center pb-5">
+                    <div className="flex items-center gap-2 px-6 py-3 rounded-xl bg-[#7c6cf0] text-white text-sm font-semibold shadow-[0_4px_25px_rgba(124,108,240,0.35)] group-hover:bg-[#8d7ff8] transition-colors">
+                      <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" /></svg>
+                      Get Your Real Result
                     </div>
                   </div>
                 </div>
