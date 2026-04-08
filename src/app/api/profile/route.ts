@@ -237,6 +237,79 @@ function parseAnalysisResponse(text: string) {
   };
 }
 
+// --- Per-mode input validation ---
+
+const MUSIC_URL_PATTERNS = [
+  /youtube\.com\/watch/i, /youtu\.be\//i, /music\.youtube\.com/i,
+  /spotify\.com\/(track|album|playlist)/i, /open\.spotify\.com/i,
+  /soundcloud\.com\//i, /music\.apple\.com\//i, /tidal\.com\//i,
+  /deezer\.com\//i, /audiomack\.com\//i, /bandcamp\.com\//i,
+];
+
+const SOCIAL_URL_PATTERNS = [
+  /instagram\.com\//i, /twitter\.com\//i, /x\.com\//i,
+  /facebook\.com\//i, /tiktok\.com\//i, /linkedin\.com\//i,
+  /reddit\.com\//i, /threads\.net\//i, /pinterest\.com\//i,
+];
+
+function validateModeInput(
+  mode: string,
+  file: File | null,
+  text: string | null,
+  url: string | null
+): string | null {
+  const mime = file?.type || "";
+
+  switch (mode) {
+    case "photo":
+      if (file && !mime.startsWith("image/")) {
+        return "Photo mode requires image files (JPG, PNG, WebP). Please upload a photo.";
+      }
+      if (url) return "Photo mode only accepts image uploads, not URLs.";
+      if (text) return "Photo mode only accepts image uploads, not text.";
+      if (!file) return "Please upload a photo for analysis.";
+      break;
+
+    case "music":
+      if (file && !mime.startsWith("audio/") && !mime.startsWith("video/")) {
+        return "Music mode requires audio or video files. Please upload a music file (MP3, WAV, etc.) or paste a music URL.";
+      }
+      if (url && !MUSIC_URL_PATTERNS.some(p => p.test(url))) {
+        return "Please paste a valid music URL (YouTube, Spotify, SoundCloud, Apple Music, etc.).";
+      }
+      if (!file && !url) return "Please upload an audio file or paste a music URL.";
+      break;
+
+    case "browsing":
+      if (file && mime.startsWith("image/")) {
+        return "Browsing mode requires data files (JSON, CSV, TXT) or pasted text — not images.";
+      }
+      if (!file && !text) return "Please upload a browsing history export or paste your browsing data.";
+      break;
+
+    case "social":
+      if (url && !SOCIAL_URL_PATTERNS.some(p => p.test(url))) {
+        return "Please paste a valid social media profile URL (Instagram, Twitter/X, TikTok, LinkedIn, etc.).";
+      }
+      break;
+
+    case "text":
+      if (file && (mime.startsWith("image/") || mime.startsWith("audio/") || mime.startsWith("video/"))) {
+        return "Text mode requires text files or pasted text — not media files.";
+      }
+      if (!file && !text) return "Please upload a text file or paste your text content.";
+      break;
+
+    case "screen-time":
+      if (file && mime.startsWith("audio/")) {
+        return "Screen Time mode requires screenshots or text data — not audio files.";
+      }
+      break;
+  }
+
+  return null; // valid
+}
+
 export async function POST(request: NextRequest) {
   try {
     const formData = await request.formData();
@@ -251,6 +324,12 @@ export async function POST(request: NextRequest) {
 
     if (!file && !text && !url) {
       return NextResponse.json({ error: "No content provided" }, { status: 400 });
+    }
+
+    // Validate input matches the selected mode
+    const validationError = validateModeInput(mode, file, text, url);
+    if (validationError) {
+      return NextResponse.json({ error: validationError }, { status: 400 });
     }
 
     const systemPrompt = (MODE_PROMPTS[mode] || MODE_PROMPTS.photo) + SCORING_INSTRUCTIONS;

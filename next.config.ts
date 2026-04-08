@@ -22,6 +22,28 @@ const nextConfig: NextConfig = {
         source: '/(.*)',
         headers: securityHeaders,
       },
+      // Cache static assets aggressively (images, 3D models, fonts)
+      {
+        source: '/models/:path*',
+        headers: [
+          ...securityHeaders,
+          { key: 'Cache-Control', value: 'public, max-age=31536000, immutable' },
+        ],
+      },
+      {
+        source: '/og-image.png',
+        headers: [
+          ...securityHeaders,
+          { key: 'Cache-Control', value: 'public, max-age=31536000, immutable' },
+        ],
+      },
+      {
+        source: '/favicon.png',
+        headers: [
+          ...securityHeaders,
+          { key: 'Cache-Control', value: 'public, max-age=31536000, immutable' },
+        ],
+      },
       {
         source: '/api/:path*',
         headers: [

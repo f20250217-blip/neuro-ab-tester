@@ -1,11 +1,30 @@
 import { NextResponse } from 'next/server';
 import type { NextRequest } from 'next/server';
+import { Ratelimit } from '@upstash/ratelimit';
+import { Redis } from '@upstash/redis';
 
-// In-memory rate limiter — effective per Vercel instance.
-// For production at scale, replace with Upstash Redis.
+// Use Upstash Redis rate limiter if configured, otherwise fall back to in-memory
+const redis = process.env.UPSTASH_REDIS_REST_URL && process.env.UPSTASH_REDIS_REST_TOKEN
+  ? new Redis({
+      url: process.env.UPSTASH_REDIS_REST_URL,
+      token: process.env.UPSTASH_REDIS_REST_TOKEN,
+    })
+  : null;
+
+// Sliding window: 5 requests per 60 seconds per IP
+const ratelimit = redis
+  ? new Ratelimit({
+      redis,
+      limiter: Ratelimit.slidingWindow(5, '60 s'),
+      analytics: true,
+      prefix: 'neurotest:ratelimit',
+    })
+  : null;
+
+// In-memory fallback (per-instance, used when Upstash is not configured)
 const rateLimitMap = new Map<string, { count: number; resetTime: number }>();
 
-function rateLimit(ip: string, limit: number, windowMs: number): { allowed: boolean; remaining: number; resetIn: number } {
+function memoryRateLimit(ip: string, limit: number, windowMs: number): { allowed: boolean; remaining: number; resetIn: number } {
   const now = Date.now();
   const entry = rateLimitMap.get(ip);
 
@@ -22,7 +41,6 @@ function rateLimit(ip: string, limit: number, windowMs: number): { allowed: bool
   return { allowed: true, remaining: limit - entry.count, resetIn: entry.resetTime - now };
 }
 
-// Periodically clean up stale entries (max 1000 entries to prevent memory leak)
 function cleanupRateLimitMap() {
   const now = Date.now();
   if (rateLimitMap.size > 1000) {
@@ -33,16 +51,14 @@ function cleanupRateLimitMap() {
 }
 
 function getClientIp(request: NextRequest): string {
-  // On Vercel, x-forwarded-for is set by the edge network and is trustworthy
   const forwarded = request.headers.get('x-forwarded-for');
   if (forwarded) {
-    // First IP is the client IP on Vercel
     return forwarded.split(',')[0].trim();
   }
   return request.headers.get('x-real-ip') || 'unknown';
 }
 
-export function middleware(request: NextRequest) {
+export async function middleware(request: NextRequest) {
   // Handle CORS preflight for API routes
   if (request.method === 'OPTIONS' && request.nextUrl.pathname.startsWith('/api/')) {
     return new NextResponse(null, {
@@ -60,7 +76,7 @@ export function middleware(request: NextRequest) {
   const contentLength = request.headers.get('content-length');
   const contentType = request.headers.get('content-type') || '';
   if (contentLength && !contentType.includes('multipart/form-data')) {
-    if (parseInt(contentLength) > 1024 * 1024) { // 1MB for non-file requests
+    if (parseInt(contentLength) > 1024 * 1024) {
       return NextResponse.json(
         { error: 'Request body too large' },
         { status: 413 }
@@ -68,16 +84,36 @@ export function middleware(request: NextRequest) {
     }
   }
 
-  // Rate limit analysis API routes
-  if (request.nextUrl.pathname.startsWith('/api/')) {
-    const ip = getClientIp(request);
-    cleanupRateLimitMap();
+  // Rate limit expensive AI analysis endpoints
+  if (request.nextUrl.pathname.startsWith('/api/analyze') ||
+      request.nextUrl.pathname.startsWith('/api/profile') ||
+      request.nextUrl.pathname.startsWith('/api/brain-history')) {
 
-    // Strict rate limit for expensive AI analysis endpoints: 5 requests per minute
-    if (request.nextUrl.pathname.startsWith('/api/analyze') ||
-        request.nextUrl.pathname.startsWith('/api/profile') ||
-        request.nextUrl.pathname.startsWith('/api/brain-history')) {
-      const { allowed, remaining, resetIn } = rateLimit(ip, 5, 60000);
+    const ip = getClientIp(request);
+
+    if (ratelimit) {
+      // Upstash Redis rate limiting (works across all Vercel instances)
+      const { success, remaining, reset } = await ratelimit.limit(ip);
+      if (!success) {
+        const resetIn = Math.max(0, reset - Date.now());
+        return NextResponse.json(
+          { error: 'Too many requests. Please wait a minute before trying again.' },
+          {
+            status: 429,
+            headers: {
+              'Retry-After': Math.ceil(resetIn / 1000).toString(),
+              'X-RateLimit-Remaining': '0',
+            },
+          }
+        );
+      }
+      const response = NextResponse.next();
+      response.headers.set('X-RateLimit-Remaining', remaining.toString());
+      return response;
+    } else {
+      // Fallback: in-memory rate limiting (per-instance only)
+      cleanupRateLimitMap();
+      const { allowed, remaining, resetIn } = memoryRateLimit(ip, 5, 60000);
       if (!allowed) {
         return NextResponse.json(
           { error: 'Too many requests. Please wait a minute before trying again.' },
@@ -90,7 +126,6 @@ export function middleware(request: NextRequest) {
           }
         );
       }
-
       const response = NextResponse.next();
       response.headers.set('X-RateLimit-Remaining', remaining.toString());
       return response;

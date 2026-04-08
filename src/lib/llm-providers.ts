@@ -45,17 +45,32 @@ async function tryModel(
   model: string,
   messages: ChatCompletionMessageParam[],
   temperature: number,
-  maxTokens: number
+  maxTokens: number,
+  retries = 2
 ): Promise<string> {
-  const response = await client.chat.completions.create({
-    model,
-    messages,
-    temperature,
-    max_tokens: maxTokens,
-  });
-  const content = response.choices[0]?.message?.content;
-  if (!content) throw new Error(`Empty response from ${model}`);
-  return content;
+  for (let attempt = 0; attempt <= retries; attempt++) {
+    try {
+      const response = await client.chat.completions.create({
+        model,
+        messages,
+        temperature,
+        max_tokens: maxTokens,
+      });
+      const content = response.choices[0]?.message?.content;
+      if (!content) throw new Error(`Empty response from ${model}`);
+      return content;
+    } catch (err: any) {
+      const is429 = err.status === 429 || err.message?.includes("429") || err.message?.includes("rate");
+      const is503 = err.status === 503 || err.message?.includes("overloaded");
+      if ((is429 || is503) && attempt < retries) {
+        // Exponential backoff: 1s, 3s
+        await new Promise(r => setTimeout(r, (attempt + 1) * 1500));
+        continue;
+      }
+      throw err;
+    }
+  }
+  throw new Error(`Failed after ${retries + 1} attempts on ${model}`);
 }
 
 function stripVisionContent(messages: ChatCompletionMessageParam[]): ChatCompletionMessageParam[] {
