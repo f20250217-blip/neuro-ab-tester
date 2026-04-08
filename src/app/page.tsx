@@ -542,8 +542,8 @@ export default function Home() {
           </section>
 
           {/* Agent Panel */}
-          <section className="divider-gradient">
-            <div className="max-w-5xl mx-auto px-4 md:px-6 py-16 sm:py-28">
+          <section className="border-t border-[var(--border)]">
+            <div className="max-w-5xl mx-auto px-4 md:px-6 py-12 sm:py-20">
               <div className="scroll-reveal mb-10 sm:mb-14 max-w-xl">
                 <h3 className="font-display text-xl sm:text-2xl md:text-3xl font-bold text-[#f0f0f8]">
                   Five experts. One <span className="text-[#7c6cf0]">consensus</span>.
@@ -572,11 +572,11 @@ export default function Home() {
           </section>
 
           {/* CTA */}
-          <section className="relative overflow-hidden">
+          <section className="border-t border-[var(--border)] relative overflow-hidden">
             <div className="absolute inset-0 pointer-events-none">
               <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[500px] h-[300px] bg-[#7c6cf0]/[0.06] rounded-full blur-[100px]" />
             </div>
-            <div className="max-w-3xl mx-auto px-4 md:px-6 py-20 sm:py-32 text-center relative z-10">
+            <div className="max-w-3xl mx-auto px-4 md:px-6 py-16 sm:py-24 text-center relative z-10">
               <div className="scroll-reveal">
                 <h3 className="font-display text-2xl sm:text-3xl md:text-5xl font-bold tracking-tight mb-4">
                   <span className="gradient-text-shimmer">Ready to decode your brain?</span>
