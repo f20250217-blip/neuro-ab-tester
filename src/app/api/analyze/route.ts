@@ -281,7 +281,7 @@ function isPrivateUrl(url: string): boolean {
 }
 
 const ALLOWED_MIMES = new Set([
-  'image/jpeg', 'image/png', 'image/webp', 'image/gif', 'image/svg+xml',
+  'image/jpeg', 'image/png', 'image/webp', 'image/gif',
   'video/mp4', 'video/webm', 'video/quicktime', 'video/avi',
   'audio/mpeg', 'audio/wav', 'audio/ogg', 'audio/webm', 'audio/mp4',
 ]);
@@ -318,8 +318,23 @@ async function urlToBase64(url: string): Promise<{ base64: string; mimeType: str
     throw new Error(`Failed to download from URL (${response.status}). Try uploading the file directly.`);
   }
 
+  // SSRF: validate final URL after redirects
+  const finalUrl = response.url;
+  if (isPrivateUrl(finalUrl)) {
+    throw new Error("Invalid URL. Redirected to a private address.");
+  }
+
+  // Prevent OOM: enforce size limit on URL downloads
+  const contentLength = response.headers.get("content-length");
+  if (contentLength && parseInt(contentLength) > MAX_UPLOAD_SIZE) {
+    throw new Error(`Remote file too large (${(parseInt(contentLength) / 1024 / 1024).toFixed(1)}MB). Max 50MB.`);
+  }
+
   const contentType = response.headers.get("content-type") || "";
   const buffer = await response.arrayBuffer();
+  if (buffer.byteLength > MAX_UPLOAD_SIZE) {
+    throw new Error(`Downloaded file too large (${(buffer.byteLength / 1024 / 1024).toFixed(1)}MB). Max 50MB.`);
+  }
   const base64 = Buffer.from(buffer).toString("base64");
 
   let mimeType = contentType.split(";")[0].trim();
@@ -459,8 +474,8 @@ export async function POST(req: NextRequest) {
     const fileB = formData.get("contentB") as File | null;
     const urlA = formData.get("urlA") as string | null;
     const urlB = formData.get("urlB") as string | null;
-    const labelA = (formData.get("labelA") as string) || "Content A";
-    const labelB = (formData.get("labelB") as string) || "Content B";
+    const labelA = ((formData.get("labelA") as string) || "Content A").slice(0, 100);
+    const labelB = ((formData.get("labelB") as string) || "Content B").slice(0, 100);
 
     if (!fileA && !urlA) {
       return NextResponse.json({ error: "Content A required (file or URL)" }, { status: 400 });
@@ -550,9 +565,23 @@ export async function POST(req: NextRequest) {
 
     return NextResponse.json({ comparison });
   } catch (error: any) {
-    console.error("Analysis error:", error.message?.slice(0, 500));
-    const safeMessage = (error.message && !error.message.includes('API') && !error.message.includes('key') && !error.message.includes('token'))
-      ? error.message
+    console.error("Analysis error:", String(error.message || "").slice(0, 300));
+    // Allowlist safe user-facing errors; everything else gets generic message
+    const msg = String(error.message || "");
+    const userFacingPatterns = [
+      /^File too large/,
+      /^Unsupported file type/,
+      /^Content [AB] required/,
+      /^No content provided/,
+      /^Failed to download from URL/,
+      /^Remote file too large/,
+      /^Downloaded file too large/,
+      /^Invalid URL/,
+      /^Could not download/,
+      /^All AI providers failed/,
+    ];
+    const safeMessage = userFacingPatterns.some(p => p.test(msg))
+      ? msg
       : 'Analysis failed. Please try again.';
     return NextResponse.json({ error: safeMessage }, { status: 500 });
   }

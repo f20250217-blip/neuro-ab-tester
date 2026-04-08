@@ -123,7 +123,11 @@ export async function POST(request: NextRequest) {
       .join("\n");
 
     const siteSummary = (topSites as Array<{ host: string; minutes: number; visits: number; category: string }>)
-      .map((s, i) => `  ${i + 1}. ${s.host} — ${s.minutes}m (${s.visits} visits) [${s.category}]`)
+      .map((s, i) => {
+        // Sanitize host to prevent prompt injection via crafted hostnames
+        const safeHost = String(s.host).replace(/[<>&"'\n\r]/g, '').slice(0, 255);
+        return `  ${i + 1}. ${safeHost} — ${s.minutes}m (${s.visits} visits) [${s.category}]`;
+      })
       .join("\n");
 
     const userMessage = `BROWSING SESSION DATA:

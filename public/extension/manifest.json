@@ -3,7 +3,7 @@
   "name": "NeuroTest AI — Brain Activity Monitor",
   "version": "1.0.0",
   "description": "See what your browsing does to your brain. Real-time neural mapping of your digital behavior.",
-  "permissions": ["tabs", "activeTab", "storage", "alarms"],
+  "permissions": ["tabs", "storage", "alarms"],
   "host_permissions": ["https://neurotest.live/*"],
   "homepage_url": "https://neurotest.live/privacy",
   "background": {

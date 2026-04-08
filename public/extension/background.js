@@ -2,7 +2,6 @@
 // Tracks browsing activity: sites visited, time spent, categories
 
 const API_BASE = "https://neurotest.live";
-// const API_BASE = "http://localhost:3000"; // dev
 
 // ── Active tab time tracking ──────────────────────────────────────
 
@@ -111,6 +110,8 @@ function categorizeHost(host) {
 // ── Message handler for popup ───────────────────────────────────
 
 chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
+  // Only accept messages from our own extension
+  if (sender.id !== chrome.runtime.id) return;
   if (msg.type === "GET_STATS") {
     flushActiveTime();
     if (activeTab.host) activeTab.start = Date.now();
