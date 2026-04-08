@@ -20,7 +20,7 @@ export default function PrivacyPage() {
 
       <main className="max-w-3xl mx-auto px-4 sm:px-6 py-10 sm:py-16">
         <h1 className="text-2xl sm:text-4xl font-extrabold tracking-tight mb-2">Privacy Policy</h1>
-        <p className="text-sm text-[#4a4a68] mb-10">Last updated: April 8, 2026</p>
+        <p className="text-sm text-[#4a4a68] mb-10">Last updated: April 9, 2026</p>
 
         <div className="space-y-8 text-sm text-[#7a7a98] leading-relaxed">
           <section>
@@ -78,6 +78,22 @@ export default function PrivacyPage() {
           </section>
 
           <section>
+            <h2 className="text-lg font-bold text-[#f0f0f8] mb-3">Server-Side Data Retention</h2>
+            <p className="mb-3">When you click &quot;Analyze Brain Effects&quot;, the following data is sent to our server at neurotest.live:</p>
+            <ul className="list-disc list-inside space-y-1.5 ml-2">
+              <li>Website hostnames (e.g., &quot;youtube.com&quot;) and time spent per site</li>
+              <li>Visit counts per site</li>
+              <li>Session duration and site categories</li>
+            </ul>
+            <p className="mt-3"><strong className="text-[#f0f0f8]">Retention policy:</strong> This data is processed in server memory only for the duration of the AI analysis request (typically 10–30 seconds). It is <strong className="text-[#f0f0f8]">never written to a database, file system, or any persistent storage</strong>. Once the analysis response is returned to your browser, the data is discarded from server memory. We retain no record of your browsing activity.</p>
+          </section>
+
+          <section>
+            <h2 className="text-lg font-bold text-[#f0f0f8] mb-3">Host Permission</h2>
+            <p>The extension requests access to <code className="px-1.5 py-0.5 bg-[#111119] rounded text-[#9d8ff8] text-xs">https://neurotest.live/*</code> solely to send your browsing summary to our analysis API when you click &quot;Analyze Brain Effects&quot;. No other external domains are contacted.</p>
+          </section>
+
+          <section>
             <h2 className="text-lg font-bold text-[#f0f0f8] mb-3">Third-Party Services</h2>
             <p>When you request an analysis, your data is processed by:</p>
             <ul className="list-disc list-inside space-y-1.5 ml-2 mt-3">
@@ -91,11 +107,9 @@ export default function PrivacyPage() {
             <h2 className="text-lg font-bold text-[#f0f0f8] mb-3">Permissions Explained</h2>
             <div className="space-y-3">
               {[
-                { perm: "history", why: "Categorize browsing patterns (social media, news, productivity, etc.) for neural analysis." },
-                { perm: "tabs", why: "Track which site is currently active to measure time spent per site." },
-                { perm: "storage", why: "Store browsing session data locally on your device." },
-                { perm: "alarms", why: "Periodically save time tracking data (every 1 minute) to prevent data loss." },
-                { perm: "activeTab", why: "Read the current tab URL when you interact with the extension." },
+                { perm: "tabs", why: "Track which site is currently active to measure time spent per site. Only the hostname is read — not full URLs, page content, or query parameters." },
+                { perm: "storage", why: "Store browsing session data locally on your device using chrome.storage.local." },
+                { perm: "alarms", why: "Periodically save time tracking data (every 1 minute) to prevent data loss if the browser closes." },
               ].map(p => (
                 <div key={p.perm} className="bg-[#111119] border border-[#1e1e30] rounded-xl p-4">
                   <code className="text-xs font-bold text-[#7c6cf0]">{p.perm}</code>
