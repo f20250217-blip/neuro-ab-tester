@@ -289,15 +289,15 @@ export default function Home() {
 
   return (
     <div className="min-h-screen bg-[#050508] overflow-x-hidden relative">
-      {/* Ambient background */}
-      <div className="fixed inset-0 pointer-events-none z-0">
+      {/* Ambient background — desktop only (blur is expensive on mobile) */}
+      <div className="fixed inset-0 pointer-events-none z-0 hidden sm:block">
         <div className="absolute top-0 left-1/4 w-[600px] h-[600px] bg-[#7c6cf0]/[0.03] rounded-full blur-[150px]" />
         <div className="absolute bottom-0 right-1/4 w-[500px] h-[500px] bg-[#00e8b0]/[0.02] rounded-full blur-[150px]" />
         <div className="absolute top-1/2 right-0 w-[400px] h-[400px] bg-[#ff6090]/[0.015] rounded-full blur-[150px]" />
       </div>
 
       {/* Header */}
-      <header className="border-b border-[#1e1e30]/60 bg-[#050508]/80 backdrop-blur-xl sticky top-0 z-50 no-select">
+      <header className="border-b border-[#1e1e30]/60 bg-[#050508]/95 sm:bg-[#050508]/80 sm:backdrop-blur-xl sticky top-0 z-50 no-select">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 py-3 sm:py-3.5 flex items-center justify-between">
           <div className="flex items-center gap-2.5 sm:gap-3.5 cursor-pointer group" onClick={reset}>
             <div className="w-9 h-9 sm:w-10 sm:h-10 rounded-xl bg-gradient-to-br from-[#7c6cf0] to-[#00e8b0] flex items-center justify-center shadow-lg shadow-[#7c6cf0]/20 flex-shrink-0">
@@ -328,8 +328,8 @@ export default function Home() {
       {/* ==================== HOME STATE ==================== */}
       {state === "home" && (
         <main className="relative z-10">
-          {/* Animated mesh gradient background */}
-          <div className="fixed inset-0 pointer-events-none z-0 overflow-hidden">
+          {/* Animated mesh gradient background — desktop only */}
+          <div className="fixed inset-0 pointer-events-none z-0 overflow-hidden hidden sm:block">
             <div className="absolute top-[-20%] left-[-10%] w-[600px] h-[600px] bg-[#7c6cf0]/[0.04] rounded-full blur-[120px] blob-1" />
             <div className="absolute bottom-[-10%] right-[-10%] w-[500px] h-[500px] bg-[#00e8b0]/[0.03] rounded-full blur-[120px] blob-2" />
             <div className="absolute top-[40%] left-[50%] w-[400px] h-[400px] bg-[#ff6090]/[0.02] rounded-full blur-[120px] blob-3" />
@@ -416,7 +416,7 @@ export default function Home() {
           </section>
 
           {/* Stats — live counters */}
-          <section className="relative border-y border-[#1e1e30]/40 bg-[#0c0c14]/50 backdrop-blur-xl mt-6 sm:mt-8">
+          <section className="relative border-y border-[#1e1e30]/40 bg-[#0c0c14] sm:bg-[#0c0c14]/50 sm:backdrop-blur-xl mt-6 sm:mt-8">
             <div className="max-w-5xl mx-auto px-4 md:px-6 py-5 sm:py-6">
               <div className="grid grid-cols-4 gap-3 sm:gap-8">
                 {[
@@ -689,7 +689,7 @@ export default function Home() {
             <div className="max-w-3xl mx-auto px-4 md:px-6 py-14 sm:py-20 text-center relative">
               <div className="scroll-reveal">
                 {/* Animated background glow */}
-                <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
+                <div className="absolute inset-0 items-center justify-center pointer-events-none hidden sm:flex">
                   <div className="w-[400px] h-[400px] rounded-full bg-[#7c6cf0]/[0.06] blur-[100px] blob-1" />
                 </div>
 

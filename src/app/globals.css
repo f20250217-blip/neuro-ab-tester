@@ -437,11 +437,18 @@ body {
   padding-right: env(safe-area-inset-right);
 }
 
-/* Mobile performance: reduce GPU-heavy effects */
+/* ====== MOBILE PERFORMANCE — AGGRESSIVE ====== */
 @media (max-width: 768px) {
+  /* KILL backdrop-filter entirely — #1 mobile perf killer */
   .glass-card {
-    backdrop-filter: blur(8px);
-    -webkit-backdrop-filter: blur(8px);
+    backdrop-filter: none !important;
+    -webkit-backdrop-filter: none !important;
+    background: rgba(17, 17, 25, 0.97) !important;
+  }
+
+  /* Kill all background blurs */
+  .blob-1, .blob-2, .blob-3 {
+    display: none !important;
   }
 
   /* Disable hover transforms on touch */
@@ -449,20 +456,52 @@ body {
     transform: none;
   }
 
-  /* Faster, snappier animations on mobile */
+  /* Faster animations */
   .animate-float-up {
-    animation-duration: 0.35s;
+    animation-duration: 0.3s;
   }
 
   .glass-card {
-    animation-duration: 0.25s;
+    animation-duration: 0.2s;
   }
 
-  /* Reduce blob animation complexity */
-  .blob-1, .blob-2, .blob-3 {
-    animation-duration: 12s;
-    will-change: transform;
+  /* Kill shimmer text animation on mobile — saves GPU */
+  .gradient-text-shimmer {
+    animation: none !important;
+    background: linear-gradient(135deg, #9d8ff8 0%, #7c6cf0 30%, #00e8b0 100%);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
   }
+
+  /* Kill all will-change on mobile (reserves GPU memory) */
+  .scroll-reveal,
+  .glass-card,
+  .btn-primary,
+  .btn-gradient,
+  .stat-card {
+    will-change: auto !important;
+  }
+
+  /* Simpler scroll reveal — no scale, just fade up */
+  .scroll-reveal.revealed {
+    animation: mobile-reveal 0.4s ease-out forwards;
+  }
+
+  /* Reduce noise overlay */
+  .noise-bg::before {
+    display: none;
+  }
+
+  /* Kill animated border */
+  .animated-border::before {
+    display: none;
+  }
+}
+
+@keyframes mobile-reveal {
+  0% { opacity: 0; transform: translateY(16px); }
+  100% { opacity: 1; transform: translateY(0); }
 }
 
 /* Minimum touch target sizes */

@@ -395,54 +395,89 @@ export default function Brain3D({ regions, className = "", autoRotate = true, sh
   }, []);
 
   return (
-    <div className={className} style={{ willChange: "transform", contain: "layout style paint" }}>
+    <div className={className} style={{ contain: "layout style paint" }}>
       <Canvas
         camera={{ position: [0, 1.2, isMobile ? 4.5 : 3.5], fov: isMobile ? 48 : 38 }}
-        dpr={isMobile ? [1, 1] : [1, 1.5]}
-        performance={{ min: 0.5 }}
+        dpr={[1, isMobile ? 1 : 1.5]}
+        performance={{ min: isMobile ? 0.3 : 0.5 }}
+        frameloop={isMobile ? "demand" : "always"}
         gl={{
-          antialias: !isMobile,
+          antialias: false,
           alpha: true,
           toneMapping: THREE.ACESFilmicToneMapping,
           toneMappingExposure: 1.1,
-          powerPreference: "default",
+          powerPreference: isMobile ? "low-power" : "default",
           stencil: false,
           depth: true,
+          preserveDrawingBuffer: false,
         }}
         style={{ background: "transparent", touchAction: "pan-y" }}
       >
-        <ambientLight intensity={0.2} />
-        <directionalLight position={[3, 6, 4]} intensity={0.9} color="#ffffff" />
-        {!isMobile && <directionalLight position={[-3, 3, -2]} intensity={0.3} color="#8888ff" />}
-
+        {/* Mobile: minimal scene — just brain mesh + controls */}
         {isMobile ? (
-          <>
-            <BrainMesh regions={regions} autoRotate={autoRotate} isMobile />
-            <RegionNodes regions={regions} />
-          </>
+          <MobileScene regions={regions} autoRotate={autoRotate} />
         ) : (
-          <Float speed={0.5} rotationIntensity={0.02} floatIntensity={0.06}>
-            <BrainMesh regions={regions} autoRotate={autoRotate} isMobile={false} />
-            <NeuralPathways regions={regions} />
-            <FlowingParticles regions={regions} />
-            <RegionNodes regions={regions} />
-          </Float>
+          <>
+            <ambientLight intensity={0.2} />
+            <directionalLight position={[3, 6, 4]} intensity={0.9} color="#ffffff" />
+            <directionalLight position={[-3, 3, -2]} intensity={0.3} color="#8888ff" />
+            <Float speed={0.5} rotationIntensity={0.02} floatIntensity={0.06}>
+              <BrainMesh regions={regions} autoRotate={autoRotate} isMobile={false} />
+              <NeuralPathways regions={regions} />
+              <FlowingParticles regions={regions} />
+              <RegionNodes regions={regions} />
+            </Float>
+            {showParticles && <Particles />}
+            <OrbitControls
+              enableZoom
+              enablePan={false}
+              minDistance={2.5}
+              maxDistance={7}
+              enableDamping
+              dampingFactor={0.15}
+              rotateSpeed={0.8}
+              zoomSpeed={0.6}
+            />
+          </>
         )}
-
-        {showParticles && <Particles />}
-        <OrbitControls
-          enableZoom
-          enablePan={false}
-          minDistance={2.5}
-          maxDistance={7}
-          enableDamping
-          dampingFactor={0.15}
-          rotateSpeed={isMobile ? 0.6 : 0.8}
-          zoomSpeed={isMobile ? 0.8 : 0.6}
-          touches={{ ONE: THREE.TOUCH.ROTATE, TWO: THREE.TOUCH.DOLLY_ROTATE }}
-        />
       </Canvas>
     </div>
+  );
+}
+
+/* Mobile scene — absolute bare minimum, manually invalidates at ~24fps */
+function MobileScene({ regions, autoRotate }: { regions: BrainRegion[]; autoRotate: boolean }) {
+  const { invalidate } = useThree();
+
+  // Tick at ~24fps instead of 60fps
+  useEffect(() => {
+    let id: number;
+    const tick = () => {
+      invalidate();
+      id = setTimeout(tick, 42) as unknown as number; // ~24fps
+    };
+    tick();
+    return () => clearTimeout(id);
+  }, [invalidate]);
+
+  return (
+    <>
+      <ambientLight intensity={0.25} />
+      <directionalLight position={[3, 6, 4]} intensity={0.9} color="#ffffff" />
+      <BrainMesh regions={regions} autoRotate={autoRotate} isMobile />
+      <OrbitControls
+        enableZoom
+        enablePan={false}
+        minDistance={3}
+        maxDistance={6}
+        enableDamping
+        dampingFactor={0.12}
+        rotateSpeed={0.6}
+        zoomSpeed={0.8}
+        touches={{ ONE: THREE.TOUCH.ROTATE, TWO: THREE.TOUCH.DOLLY_ROTATE }}
+        onChange={() => invalidate()}
+      />
+    </>
   );
 }
 
