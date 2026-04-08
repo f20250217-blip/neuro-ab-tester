@@ -8,7 +8,12 @@ const API_BASE = "https://neurotest.live";
 let activeTab = { tabId: null, url: null, host: null, start: Date.now() };
 
 function getHost(url) {
-  try { return new URL(url).hostname.replace(/^www\./, ""); }
+  try {
+    const h = new URL(url).hostname.replace(/^www\./, "");
+    // Ignore empty, chrome-internal, and extension pages
+    if (!h || h === "newtab" || url.startsWith("chrome://") || url.startsWith("chrome-extension://") || url.startsWith("about:")) return null;
+    return h;
+  }
   catch { return null; }
 }
 
@@ -126,6 +131,7 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
       const sites = [];
 
       for (const [host, seconds] of Object.entries(timeData)) {
+        if (!host || host === "null" || host === "undefined") continue;
         const cat = categorizeHost(host);
         categories[cat] = (categories[cat] || 0) + seconds;
         sites.push({
