@@ -143,36 +143,92 @@ export default function Home() {
   const hasB = fileB || urlB;
   const currentMode = MODES.find((m) => m.id === mode) || MODES[0];
 
-  // Strict per-mode input validation
+  // Strict per-mode input validation — every mode locked down
   const MUSIC_DOMAINS = ["youtube.com", "youtu.be", "music.youtube.com", "spotify.com", "open.spotify.com", "soundcloud.com", "music.apple.com", "tidal.com", "deezer.com", "audiomack.com", "bandcamp.com"];
   const SOCIAL_DOMAINS = ["instagram.com", "twitter.com", "x.com", "facebook.com", "tiktok.com", "linkedin.com", "reddit.com", "threads.net", "pinterest.com"];
 
+  const hasFile = !!profileFile;
+  const hasText = !!profileText.trim();
+  const hasUrl = !!profileUrl.trim();
+  const fileMime = profileFile?.type || "";
+  const isImage = fileMime.startsWith("image/");
+  const isAudio = fileMime.startsWith("audio/");
+  const isVideo = fileMime.startsWith("video/");
+  const isMediaFile = isImage || isAudio || isVideo;
+
   const hasProfile = (() => {
-    const hasFile = !!profileFile;
-    const hasText = !!profileText.trim();
-    const hasUrl = !!profileUrl.trim();
     if (!hasFile && !hasText && !hasUrl) return false;
 
     switch (mode) {
       case "photo":
-        return hasFile && (!profileFile || profileFile.type.startsWith("image/"));
-      case "music": {
-        if (hasFile) return profileFile!.type.startsWith("audio/") || profileFile!.type.startsWith("video/");
+        // ONLY image file
+        return hasFile && isImage && !hasText && !hasUrl;
+      case "music":
+        // ONLY audio/video file OR valid music URL
+        if (hasText) return false;
+        if (hasFile) return isAudio || isVideo;
         if (hasUrl) return MUSIC_DOMAINS.some(d => profileUrl.toLowerCase().includes(d));
         return false;
-      }
       case "browsing":
-        return hasFile ? !profileFile!.type.startsWith("image/") : hasText;
-      case "social": {
-        if (hasUrl) return SOCIAL_DOMAINS.some(d => profileUrl.toLowerCase().includes(d));
-        return hasFile || hasText;
-      }
+        // ONLY data file (not media) OR pasted text. No URLs.
+        if (hasUrl) return false;
+        if (hasFile) return !isMediaFile;
+        return hasText;
+      case "social":
+        // Valid social URL, OR screenshot (image), OR pasted text. No audio/video files. No random URLs.
+        if (hasUrl && !SOCIAL_DOMAINS.some(d => profileUrl.toLowerCase().includes(d))) return false;
+        if (hasFile && (isAudio || isVideo)) return false;
+        return hasFile || hasText || hasUrl;
       case "text":
-        return hasFile ? !(profileFile!.type.startsWith("image/") || profileFile!.type.startsWith("audio/") || profileFile!.type.startsWith("video/")) : hasText;
+        // ONLY text file OR pasted text. No media, no URLs.
+        if (hasUrl) return false;
+        if (hasFile) return !isMediaFile;
+        return hasText;
       case "screen-time":
+        // ONLY screenshot (image) or text file OR pasted text. No audio/video, no URLs.
+        if (hasUrl) return false;
+        if (hasFile && (isAudio || isVideo)) return false;
         return hasFile || hasText;
       default:
-        return hasFile || hasText || hasUrl;
+        return false;
+    }
+  })();
+
+  // Validation message for when user has provided input but it doesn't match the mode
+  const validationHint = (() => {
+    if (!hasFile && !hasText && !hasUrl) return null;
+    if (hasProfile) return null;
+
+    switch (mode) {
+      case "photo":
+        if (hasUrl) return "Photo mode only accepts image uploads, not URLs";
+        if (hasText) return "Photo mode only accepts image uploads, not text";
+        if (hasFile && !isImage) return "Please upload an image file (JPG, PNG, WebP)";
+        return null;
+      case "music":
+        if (hasText) return "Music mode only accepts audio files or music URLs, not text";
+        if (hasFile && !isAudio && !isVideo) return "Please upload an audio or video file (MP3, WAV, MP4)";
+        if (hasUrl) return "Only YouTube, Spotify, SoundCloud, Apple Music, Tidal, Deezer, and Bandcamp URLs accepted";
+        return null;
+      case "browsing":
+        if (hasUrl) return "Browsing mode only accepts data files or pasted text, not URLs";
+        if (hasFile && isMediaFile) return "Upload a data file (JSON, CSV, TXT) — not media files";
+        return null;
+      case "social":
+        if (hasUrl && !SOCIAL_DOMAINS.some(d => profileUrl.toLowerCase().includes(d)))
+          return "Only Instagram, Twitter/X, TikTok, Facebook, LinkedIn, Reddit, Threads, Pinterest URLs accepted";
+        if (hasFile && (isAudio || isVideo)) return "Upload a profile screenshot or paste your posts as text";
+        return null;
+      case "text":
+        if (hasUrl) return "Text mode only accepts text files or pasted text, not URLs";
+        if (hasFile && isMediaFile) return "Upload a text file (TXT, JSON, CSV) — not media files";
+        return null;
+      case "screen-time":
+        if (hasUrl) return "Screen Time mode only accepts screenshots or pasted text, not URLs";
+        if (hasFile && (isAudio || isVideo)) return "Upload a screenshot or describe your screen time as text";
+        return null;
+      default:
+        return null;
     }
   })();
 
@@ -911,24 +967,10 @@ export default function Home() {
             )}
           </div>
 
-          {/* Validation hint */}
-          {!hasProfile && (profileFile || profileText.trim() || profileUrl.trim()) && (
+          {/* Validation hint — shown when input doesn't match mode */}
+          {validationHint && (
             <div className="text-center mb-2">
-              <p className="text-sm text-[#ff6060] font-medium">
-                {mode === "music" && profileUrl.trim() && !MUSIC_DOMAINS.some(d => profileUrl.toLowerCase().includes(d))
-                  ? "Please paste a valid music URL (YouTube, Spotify, SoundCloud, Apple Music)"
-                  : mode === "music" && profileFile && !profileFile.type.startsWith("audio/") && !profileFile.type.startsWith("video/")
-                  ? "Music mode requires audio or video files"
-                  : mode === "photo" && profileFile && !profileFile.type.startsWith("image/")
-                  ? "Photo mode requires image files (JPG, PNG, WebP)"
-                  : mode === "social" && profileUrl.trim() && !SOCIAL_DOMAINS.some(d => profileUrl.toLowerCase().includes(d))
-                  ? "Please paste a valid social media URL (Instagram, Twitter/X, TikTok, etc.)"
-                  : mode === "text" && profileFile && (profileFile.type.startsWith("image/") || profileFile.type.startsWith("audio/") || profileFile.type.startsWith("video/"))
-                  ? "Text mode requires text files or pasted text — not media files"
-                  : mode === "browsing" && profileFile && profileFile.type.startsWith("image/")
-                  ? "Browsing mode requires data files (JSON, CSV, TXT) or pasted text"
-                  : "Input doesn't match this analysis mode"}
-              </p>
+              <p className="text-sm text-[#ff6060] font-medium">{validationHint}</p>
             </div>
           )}
 

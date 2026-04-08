@@ -260,50 +260,70 @@ function validateModeInput(
 ): string | null {
   const mime = file?.type || "";
 
+  // Every mode: reject inputs that don't belong
   switch (mode) {
     case "photo":
-      if (file && !mime.startsWith("image/")) {
-        return "Photo mode requires image files (JPG, PNG, WebP). Please upload a photo.";
-      }
+      // ONLY accepts: image file. Nothing else.
       if (url) return "Photo mode only accepts image uploads, not URLs.";
       if (text) return "Photo mode only accepts image uploads, not text.";
       if (!file) return "Please upload a photo for analysis.";
+      if (!mime.startsWith("image/")) return "Photo mode requires image files (JPG, PNG, WebP). The file you uploaded is not an image.";
       break;
 
     case "music":
+      // ONLY accepts: audio/video file OR music platform URL. Nothing else.
+      if (text) return "Music mode only accepts audio files or music URLs, not text.";
       if (file && !mime.startsWith("audio/") && !mime.startsWith("video/")) {
-        return "Music mode requires audio or video files. Please upload a music file (MP3, WAV, etc.) or paste a music URL.";
+        return "Music mode requires audio or video files (MP3, WAV, MP4, etc.). The file you uploaded is not a valid music file.";
       }
       if (url && !MUSIC_URL_PATTERNS.some(p => p.test(url))) {
-        return "Please paste a valid music URL (YouTube, Spotify, SoundCloud, Apple Music, etc.).";
+        return "Invalid music URL. Only YouTube, Spotify, SoundCloud, Apple Music, Tidal, Deezer, Bandcamp, and Audiomack links are accepted.";
       }
-      if (!file && !url) return "Please upload an audio file or paste a music URL.";
+      if (!file && !url) return "Please upload an audio file or paste a music platform URL.";
       break;
 
     case "browsing":
-      if (file && mime.startsWith("image/")) {
-        return "Browsing mode requires data files (JSON, CSV, TXT) or pasted text — not images.";
+      // ONLY accepts: data file (JSON/CSV/TXT) OR pasted text. No images, no audio, no video, no URLs.
+      if (url) return "Browsing mode only accepts data file uploads or pasted text, not URLs.";
+      if (file && (mime.startsWith("image/") || mime.startsWith("audio/") || mime.startsWith("video/"))) {
+        return "Browsing mode requires data files (JSON, CSV, TXT) — not media files. Upload your browser history export or paste your browsing data as text.";
       }
-      if (!file && !text) return "Please upload a browsing history export or paste your browsing data.";
+      if (!file && !text) return "Please upload a browsing history export (JSON/CSV) or paste your browsing data.";
       break;
 
     case "social":
+      // ONLY accepts: social platform URL, OR screenshot (image), OR pasted text (posts/bio). No random URLs.
       if (url && !SOCIAL_URL_PATTERNS.some(p => p.test(url))) {
-        return "Please paste a valid social media profile URL (Instagram, Twitter/X, TikTok, LinkedIn, etc.).";
+        return "Invalid social media URL. Only Instagram, Twitter/X, TikTok, Facebook, LinkedIn, Reddit, Threads, and Pinterest links are accepted.";
       }
+      if (file && mime.startsWith("audio/")) {
+        return "Social mode doesn't accept audio files. Upload a profile screenshot, paste a social media URL, or paste your posts/bio as text.";
+      }
+      if (file && mime.startsWith("video/")) {
+        return "Social mode doesn't accept video files. Upload a profile screenshot, paste a social media URL, or paste your posts/bio as text.";
+      }
+      if (!file && !text && !url) return "Please paste a social media URL, upload a profile screenshot, or paste your posts/bio.";
       break;
 
     case "text":
+      // ONLY accepts: text file OR pasted text. No media files, no URLs.
+      if (url) return "Text mode only accepts text file uploads or pasted text, not URLs.";
       if (file && (mime.startsWith("image/") || mime.startsWith("audio/") || mime.startsWith("video/"))) {
-        return "Text mode requires text files or pasted text — not media files.";
+        return "Text mode requires text files (TXT, JSON, CSV) or pasted text — not media files.";
       }
-      if (!file && !text) return "Please upload a text file or paste your text content.";
+      if (!file && !text) return "Please upload a text file or paste your messages/emails/written content.";
       break;
 
     case "screen-time":
+      // ONLY accepts: screenshot (image) OR pasted text describing screen time. No audio, no video, no URLs.
+      if (url) return "Screen Time mode only accepts screenshots or pasted text, not URLs.";
       if (file && mime.startsWith("audio/")) {
-        return "Screen Time mode requires screenshots or text data — not audio files.";
+        return "Screen Time mode doesn't accept audio files. Upload a screen time screenshot or describe your screen time as text.";
       }
+      if (file && mime.startsWith("video/")) {
+        return "Screen Time mode doesn't accept video files. Upload a screen time screenshot or describe your screen time as text.";
+      }
+      if (!file && !text) return "Please upload a screen time screenshot or describe your daily screen time usage.";
       break;
   }
 
