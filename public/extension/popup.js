@@ -1,175 +1,198 @@
-// NeuroTest AI — Extension Popup Logic
+// NeuroTest — Extension Popup
 
-const $ = (sel) => document.querySelector(sel);
-const $$ = (sel) => document.querySelectorAll(sel);
+const $ = (s) => document.querySelector(s);
+const $$ = (s) => document.querySelectorAll(s);
 
-const CATEGORY_COLORS = {
-  "Social Media": "cat-social",
-  "Video & Streaming": "cat-video",
-  "News & Media": "cat-news",
-  "Shopping": "cat-shopping",
-  "Productivity": "cat-productivity",
-  "Search & Info": "cat-search",
-  "Communication": "cat-communication",
-  "Education": "cat-education",
-  "Gaming": "cat-gaming",
-  "Health & Fitness": "cat-health",
-  "Other": "cat-other",
+const CAT_CLASS = {
+  "Social Media": "c-social",
+  "Video & Streaming": "c-video",
+  "News & Media": "c-news",
+  "Shopping": "c-shopping",
+  "Productivity": "c-prod",
+  "Search & Info": "c-search",
+  "Communication": "c-comms",
+  "Education": "c-edu",
+  "Gaming": "c-gaming",
+  "Health & Fitness": "c-health",
+  "Other": "c-other",
 };
 
-const CATEGORY_COLORS_HEX = {
-  "Social Media": "#ff6090",
+const CAT_HEX = {
+  "Social Media": "#e8457a",
   "Video & Streaming": "#7c6cf0",
-  "News & Media": "#00c4ff",
-  "Shopping": "#ffb020",
-  "Productivity": "#00e8b0",
-  "Search & Info": "#9d8ff8",
-  "Communication": "#00c49a",
-  "Education": "#d0ccf0",
-  "Gaming": "#ff4060",
-  "Health & Fitness": "#00e8b0",
-  "Other": "#4a4a68",
+  "News & Media": "#00aadd",
+  "Shopping": "#e8a020",
+  "Productivity": "#00c88a",
+  "Search & Info": "#8a80e0",
+  "Communication": "#00aa88",
+  "Education": "#b0a8e0",
+  "Gaming": "#e04050",
+  "Health & Fitness": "#00c88a",
+  "Other": "#44445a",
 };
 
-function formatTime(seconds) {
-  if (seconds < 60) return `${seconds}s`;
-  const m = Math.floor(seconds / 60);
-  if (m < 60) return `${m}m`;
+function fmt(s) {
+  if (s < 60) return s + "s";
+  const m = Math.floor(s / 60);
+  if (m < 60) return m + "m";
   const h = Math.floor(m / 60);
   const rm = m % 60;
-  return rm > 0 ? `${h}h ${rm}m` : `${h}h`;
+  return rm ? h + "h " + rm + "m" : h + "h";
 }
 
-function timeAgo(ts) {
-  const diff = Date.now() - ts;
-  const mins = Math.floor(diff / 60000);
-  if (mins < 1) return "just now";
-  if (mins < 60) return `${mins}m ago`;
-  const hrs = Math.floor(mins / 60);
-  if (hrs < 24) return `${hrs}h ago`;
-  return `${Math.floor(hrs / 24)}d ago`;
+function ago(ts) {
+  const m = Math.floor((Date.now() - ts) / 60000);
+  if (m < 1) return "just now";
+  if (m < 60) return m + "m ago";
+  const h = Math.floor(m / 60);
+  return h < 24 ? h + "h ago" : Math.floor(h / 24) + "d ago";
 }
 
-// ── Load stats ────────────────────────────────────────────────
+// ── Tabs ───────────────────────────────────────────────────
+
+let currentTab = "activity";
+
+function switchTab(name) {
+  currentTab = name;
+  $$(".tab").forEach((t) => t.classList.toggle("active", t.dataset.tab === name));
+  $$("#tab-activity, #tab-effects").forEach((p) => p.classList.toggle("hidden", p.id !== "tab-" + name));
+}
+
+// ── Load stats ─────────────────────────────────────────────
+
+let lastData = null;
 
 function loadStats() {
   chrome.runtime.sendMessage({ type: "GET_STATS" }, (data) => {
     if (chrome.runtime.lastError || !data) {
-      $("#loading").classList.add("hidden");
-      $("#app").classList.remove("hidden");
+      showApp();
       return;
     }
+    lastData = data;
 
     // Session time
-    $("#sessionTime").textContent = data.sessionMinutes > 0 ? `${data.sessionMinutes}m` : "< 1m";
+    $("#sessionTime").textContent = data.sessionMinutes > 0 ? data.sessionMinutes + "m" : "<1m";
 
-    // Quick stats
-    $("#totalTime").textContent = formatTime(data.totalSeconds);
+    // Metrics
+    $("#totalTime").textContent = fmt(data.totalSeconds);
     $("#siteCount").textContent = data.siteCount;
 
-    // Top category
     const cats = Object.entries(data.categories).sort((a, b) => b[1] - a[1]);
-    $("#topCategory").textContent = cats.length > 0 ? cats[0][0].split(" ")[0] : "—";
+    $("#topCategory").textContent = cats.length > 0 ? cats[0][0].split(" ")[0] : "\u2014";
 
-    // Categories
     renderCategories(data.categories, data.totalSeconds);
-
-    // Top sites
     renderTopSites(data.topSites);
+    renderEffects(data.lastAnalysis);
 
-    // Last analysis
-    if (data.lastAnalysis) {
-      renderEffects(data.lastAnalysis);
-    }
-
-    // Show app
-    $("#loading").classList.add("hidden");
-    $("#app").classList.remove("hidden");
+    showApp();
   });
 }
 
-function renderCategories(categories, totalSeconds) {
-  const container = $("#categories");
+function showApp() {
+  $("#loading").classList.add("hidden");
+  $("#app").classList.remove("hidden");
+}
+
+// ── Categories ────────────────────────────────────────────
+
+function renderCategories(categories, total) {
+  const el = $("#categories");
   const sorted = Object.entries(categories).sort((a, b) => b[1] - a[1]);
 
-  if (sorted.length === 0) {
-    container.innerHTML = '<div class="empty-state">No browsing data yet<p>Start browsing and come back!</p></div>';
+  if (!sorted.length) {
+    el.innerHTML = '<div class="empty">Browse some sites to see data here</div>';
     return;
   }
 
-  container.innerHTML = sorted.slice(0, 6).map(([name, seconds]) => {
-    const pct = totalSeconds > 0 ? (seconds / totalSeconds) * 100 : 0;
-    const colorClass = CATEGORY_COLORS[name] || "cat-other";
-    const colorHex = CATEGORY_COLORS_HEX[name] || "#4a4a68";
-    return `
-      <div class="category-item">
-        <div class="category-top">
-          <div class="category-left">
-            <div class="category-dot ${colorClass}"></div>
-            <span class="category-name">${name}</span>
-          </div>
-          <span class="category-time">${formatTime(seconds)}</span>
-        </div>
-        <div class="category-bar-wrap">
-          <div class="category-bar" style="width:${pct}%; background:${colorHex}"></div>
-        </div>
+  el.innerHTML = sorted.slice(0, 5).map(([name, secs]) => {
+    const pct = total > 0 ? (secs / total) * 100 : 0;
+    const cls = CAT_CLASS[name] || "c-other";
+    const hex = CAT_HEX[name] || "#44445a";
+    return `<div class="cat-row">
+      <div class="cat-info">
+        <div class="cat-left"><div class="cat-dot ${cls}"></div><span class="cat-name">${name}</span></div>
+        <span class="cat-time">${fmt(secs)}</span>
       </div>
-    `;
+      <div class="cat-bar-bg"><div class="cat-bar-fill" style="width:${pct}%;background:${hex}"></div></div>
+    </div>`;
   }).join("");
 }
 
-function renderTopSites(sites) {
-  const container = $("#topSites");
+// ── Top Sites ─────────────────────────────────────────────
 
-  if (sites.length === 0) {
-    container.innerHTML = '<div class="empty-state">No sites tracked yet</div>';
+function renderTopSites(sites) {
+  const el = $("#topSites");
+
+  if (!sites.length) {
+    el.innerHTML = '<div class="empty">No sites tracked yet</div>';
     return;
   }
 
-  container.innerHTML = sites.slice(0, 8).map((s, i) => `
+  el.innerHTML = sites.slice(0, 6).map((s, i) => `
     <div class="site-row">
-      <div class="site-rank">${i + 1}</div>
+      <div class="site-rank${i === 0 ? " top" : ""}">${i + 1}</div>
       <span class="site-host">${s.host}</span>
-      <span class="site-visits">${s.visits}x</span>
-      <span class="site-time">${formatTime(s.seconds)}</span>
-    </div>
-  `).join("");
-}
-
-function renderEffects(analysis) {
-  const section = $("#effectsSection");
-  section.classList.remove("hidden");
-
-  if (analysis.analyzedAt) {
-    $("#analyzedTime").textContent = timeAgo(analysis.analyzedAt);
-  }
-
-  const effects = [
-    { name: "Dopamine Load", score: analysis.dopamineLoad, color: "#ff6090" },
-    { name: "Attention Drain", score: analysis.attentionDrain, color: "#ffb020" },
-    { name: "Stress Level", score: analysis.stressLevel, color: "#ff4060" },
-    { name: "Learning Score", score: analysis.learningScore, color: "#00e8b0" },
-    { name: "Creativity", score: analysis.creativityScore, color: "#7c6cf0" },
-    { name: "Social Need", score: analysis.socialNeedScore, color: "#9d8ff8" },
-  ];
-
-  $("#effects").innerHTML = effects.map(e => `
-    <div class="effect-card">
-      <div class="effect-name">${e.name}</div>
-      <div class="effect-score" style="color:${e.color}">${e.score}<span style="font-size:11px;color:#4a4a68">/10</span></div>
-      <div class="effect-bar">
-        <div class="effect-fill" style="width:${e.score * 10}%; background:${e.color}"></div>
+      <div class="site-meta">
+        <span class="site-visits">${s.visits}x</span>
+        <span class="site-time">${fmt(s.seconds)}</span>
       </div>
     </div>
   `).join("");
-
-  if (analysis.summary) {
-    $("#effectsSummary").textContent = analysis.summary;
-    $("#effectsSummary").style.display = "block";
-  }
 }
 
-// ── Analyze ───────────────────────────────────────────────────
+// ── Neural Effects ────────────────────────────────────────
+
+function renderEffects(analysis) {
+  const el = $("#effectsContent");
+
+  if (!analysis) {
+    el.innerHTML = `<div class="effects-empty">
+      <div class="effects-empty-icon">
+        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#5a5a72" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M12 2C8.5 2 5 4.5 5 8c0 1.5.5 3 1.5 4C5.5 13 5 14.5 5 16c0 3.5 3.5 6 7 6s7-2.5 7-6c0-1.5-.5-3-1.5-4 1-1 1.5-2.5 1.5-4 0-3.5-3.5-6-7-6z"/>
+          <path d="M12 2v20"/><path d="M5 8h14"/><path d="M5 16h14"/>
+        </svg>
+      </div>
+      <h3>No analysis yet</h3>
+      <p>Hit "Analyze Brain Effects" to see how your browsing affects your brain.</p>
+    </div>`;
+    return;
+  }
+
+  const effects = [
+    { name: "Dopamine", score: analysis.dopamineLoad, color: "#e8457a" },
+    { name: "Attention", score: analysis.attentionDrain, color: "#e8a020" },
+    { name: "Stress", score: analysis.stressLevel, color: "#e04050" },
+    { name: "Learning", score: analysis.learningScore, color: "#00c88a" },
+    { name: "Creativity", score: analysis.creativityScore, color: "#7c6cf0" },
+    { name: "Social Need", score: analysis.socialNeedScore, color: "#8a80e0" },
+  ];
+
+  let html = '<div class="effects-grid">';
+  effects.forEach((e) => {
+    html += `<div class="effect-card">
+      <div class="effect-label">${e.name}</div>
+      <div class="effect-row">
+        <span class="effect-value" style="color:${e.color}">${e.score}</span>
+        <span class="effect-max">/10</span>
+      </div>
+      <div class="effect-bar-bg"><div class="effect-bar-fill" style="width:${e.score * 10}%;background:${e.color}"></div></div>
+    </div>`;
+  });
+  html += "</div>";
+
+  if (analysis.summary) {
+    html += `<div class="effects-summary">${analysis.summary}</div>`;
+  }
+
+  if (analysis.analyzedAt) {
+    html += `<div class="effects-time">Analyzed ${ago(analysis.analyzedAt)}</div>`;
+  }
+
+  el.innerHTML = html;
+}
+
+// ── Analyze ───────────────────────────────────────────────
 
 function startAnalysis() {
   $("#app").classList.add("hidden");
@@ -179,48 +202,52 @@ function startAnalysis() {
   const fill = $("#progressFill");
   const status = $("#analyzeStatus");
 
-  const messages = [
+  const msgs = [
     "Processing browsing patterns...",
     "Extracting attention signals...",
-    "5 AI agents scoring independently...",
-    "Calculating neural effects...",
-    "Building your brain report...",
+    "5 agents scoring independently...",
+    "Computing neural effects...",
+    "Building brain report...",
   ];
 
-  const progressTimer = setInterval(() => {
-    progress = Math.min(progress + Math.random() * 12 + 3, 90);
-    fill.style.width = `${progress}%`;
-    const msgIdx = Math.min(Math.floor(progress / 20), messages.length - 1);
-    status.textContent = messages[msgIdx];
+  const timer = setInterval(() => {
+    progress = Math.min(progress + Math.random() * 10 + 3, 90);
+    fill.style.width = progress + "%";
+    status.textContent = msgs[Math.min(Math.floor(progress / 20), msgs.length - 1)];
   }, 800);
 
   chrome.runtime.sendMessage({ type: "ANALYZE_BRAIN" }, (res) => {
-    clearInterval(progressTimer);
+    clearInterval(timer);
     fill.style.width = "100%";
 
     setTimeout(() => {
       $("#analyzing").classList.add("hidden");
       if (res && res.success) {
-        loadStats(); // reload with new analysis
+        switchTab("effects");
+        loadStats();
       } else {
-        // Show error and go back
-        alert(res?.error || "Analysis failed. Make sure you have some browsing data.");
+        alert(res?.error || "Analysis failed. Browse a few sites first.");
         $("#app").classList.remove("hidden");
       }
-    }, 600);
+    }, 500);
   });
 }
 
-// ── Init ──────────────────────────────────────────────────────
+// ── Init ──────────────────────────────────────────────────
 
 document.addEventListener("DOMContentLoaded", () => {
   loadStats();
 
+  // Tab clicks
+  $$(".tab").forEach((t) => t.addEventListener("click", () => switchTab(t.dataset.tab)));
+
+  // Buttons
   $("#analyzeBtn").addEventListener("click", startAnalysis);
 
   $("#resetBtn").addEventListener("click", () => {
-    if (confirm("Reset all tracking data for this session?")) {
+    if (confirm("Reset all tracking data?")) {
       chrome.runtime.sendMessage({ type: "RESET_SESSION" }, () => {
+        switchTab("activity");
         loadStats();
       });
     }
