@@ -18,10 +18,13 @@ const Brain3D = dynamic(() => import("@/components/Brain3D"), {
 const HeroBrain = dynamic(() => import("@/components/Brain3D").then((m) => ({ default: m.HeroBrain })), {
   ssr: false,
   loading: () => (
-    <div className="w-full h-[380px] sm:h-[420px] md:h-[550px] flex items-center justify-center">
-      <div className="relative">
-        <div className="w-32 h-32 sm:w-40 sm:h-40 rounded-full bg-gradient-to-br from-[#7c6cf0]/20 to-[#00e8b0]/10 animate-pulse" />
-        <div className="absolute inset-0 rounded-full bg-[#7c6cf0]/5 blur-2xl" />
+    <div className="w-full h-[380px] sm:h-[420px] md:h-[550px] flex items-center justify-center relative overflow-hidden">
+      {/* Glow blobs that mimic the brain's color presence */}
+      <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-[55%] w-[280px] h-[220px] sm:w-[360px] sm:h-[280px] md:w-[450px] md:h-[350px]">
+        <div className="absolute inset-0 rounded-full bg-[#2a6844]/40 blur-[60px]" />
+        <div className="absolute top-[10%] left-[15%] w-[60%] h-[50%] rounded-full bg-[#cc8800]/25 blur-[50px]" />
+        <div className="absolute bottom-[10%] right-[10%] w-[45%] h-[40%] rounded-full bg-[#ff6600]/20 blur-[40px]" />
+        <div className="absolute top-[20%] right-[20%] w-[35%] h-[35%] rounded-full bg-[#7c6cf0]/15 blur-[35px]" />
       </div>
     </div>
   ),

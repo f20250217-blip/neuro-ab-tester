@@ -77,7 +77,7 @@ const fragShader = `
 function BrainMesh({ regions, autoRotate, isMobile }: { regions: BrainRegion[]; autoRotate: boolean; isMobile: boolean }) {
   const groupRef = useRef<THREE.Group>(null);
   const matRef = useRef<THREE.ShaderMaterial>(null);
-  const { scene } = useGLTF("/models/brain.glb");
+  const { scene } = useGLTF("/models/brain-optimized.glb");
 
   const geometry = useMemo(() => {
     let geo: THREE.BufferGeometry | null = null;
@@ -500,4 +500,4 @@ export function HeroBrain() {
   return <Brain3D regions={regions} className="w-full h-[380px] sm:h-[420px] md:h-[550px]" autoRotate showParticles />;
 }
 
-useGLTF.preload("/models/brain.glb");
+useGLTF.preload("/models/brain-optimized.glb");
