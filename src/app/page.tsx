@@ -100,51 +100,6 @@ export default function Home() {
   const [progress, setProgress] = useState(0);
   const [activeTab, setActiveTab] = useState<string>("overview");
 
-  // Animated counter for stats
-  const [statsVisible, setStatsVisible] = useState(false);
-  useEffect(() => {
-    if (state === "home") {
-      const timer = setTimeout(() => setStatsVisible(true), 300);
-      return () => clearTimeout(timer);
-    }
-    setStatsVisible(false);
-  }, [state]);
-
-  // Live scan counter (simulated social proof)
-  const [liveScans, setLiveScans] = useState(2847);
-  const [activeNow, setActiveNow] = useState(23);
-  useEffect(() => {
-    if (state !== "home") return;
-    const scanInterval = setInterval(() => {
-      setLiveScans(p => p + Math.floor(Math.random() * 3) + 1);
-    }, Math.random() * 2000 + 1500);
-    const activeInterval = setInterval(() => {
-      setActiveNow(p => Math.max(12, Math.min(45, p + (Math.random() > 0.5 ? 1 : -1))));
-    }, Math.random() * 3000 + 2000);
-    return () => { clearInterval(scanInterval); clearInterval(activeInterval); };
-  }, [state]);
-
-  // Toast notifications (social proof)
-  const [toastVisible, setToastVisible] = useState(false);
-  const [toastData, setToastData] = useState({ name: "", action: "", time: "" });
-  const toastNames = ["Alex from NYC", "Priya from Mumbai", "Lucas from Berlin", "Yuki from Tokyo", "Emma from London", "Carlos from SP", "Aisha from Dubai", "Chen from Shanghai", "Sofia from Rome", "Jake from Sydney"];
-  const toastActions = ["completed a neural scan", "analyzed their Spotify data", "tested 2 ad creatives", "mapped their browsing profile", "ran a photo personality scan", "analyzed screen time patterns"];
-  useEffect(() => {
-    if (state !== "home") return;
-    const showToast = () => {
-      setToastData({
-        name: toastNames[Math.floor(Math.random() * toastNames.length)],
-        action: toastActions[Math.floor(Math.random() * toastActions.length)],
-        time: `${Math.floor(Math.random() * 5) + 1}m ago`
-      });
-      setToastVisible(true);
-      setTimeout(() => setToastVisible(false), 4000);
-    };
-    const first = setTimeout(showToast, 3000);
-    const interval = setInterval(showToast, Math.random() * 8000 + 8000);
-    return () => { clearTimeout(first); clearInterval(interval); };
-  }, [state]);
-
   // Scroll reveal observer — wait a tick for DOM to paint
   const observerRef = useRef<IntersectionObserver | null>(null);
   useEffect(() => {
@@ -162,30 +117,6 @@ export default function Home() {
     });
     return () => { cancelAnimationFrame(timer); observerRef.current?.disconnect(); };
   }, [state]);
-
-  // Animated number counter hook
-  const useCounter = (target: number, duration = 2000, active = false) => {
-    const [count, setCount] = useState(0);
-    useEffect(() => {
-      if (!active) { setCount(0); return; }
-      let start = 0;
-      const startTime = performance.now();
-      const step = (now: number) => {
-        const elapsed = now - startTime;
-        const progress = Math.min(elapsed / duration, 1);
-        const eased = 1 - Math.pow(1 - progress, 3);
-        setCount(Math.floor(eased * target));
-        if (progress < 1) requestAnimationFrame(step);
-      };
-      requestAnimationFrame(step);
-    }, [active, target, duration]);
-    return count;
-  };
-
-  const statScans = useCounter(2847, 2200, statsVisible);
-  const statAgents = useCounter(5, 1500, statsVisible);
-  const statRegions = useCounter(12, 1800, statsVisible);
-  const statFeatures = useCounter(37, 2000, statsVisible);
 
   const hasA = fileA || urlA;
   const hasB = fileB || urlB;
@@ -341,21 +272,6 @@ export default function Home() {
           {/* Grid BG */}
           <div className="absolute inset-0 opacity-[0.03] pointer-events-none" style={{ backgroundImage: "linear-gradient(rgba(124,108,240,0.3) 1px, transparent 1px), linear-gradient(90deg, rgba(124,108,240,0.3) 1px, transparent 1px)", backgroundSize: "60px 60px" }} />
 
-          {/* Toast notification */}
-          {toastVisible && (
-            <div className="fixed top-20 right-4 sm:right-6 z-50 toast-animate">
-              <div className="glass-card rounded-2xl px-4 py-3 flex items-center gap-3 shadow-2xl shadow-black/40 border border-[#1e1e30] max-w-[300px]">
-                <div className="w-8 h-8 rounded-full bg-gradient-to-br from-[#7c6cf0] to-[#00e8b0] flex items-center justify-center flex-shrink-0">
-                  <svg className="w-4 h-4 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" /></svg>
-                </div>
-                <div className="min-w-0">
-                  <p className="text-[11px] font-semibold text-[#f0f0f8] truncate">{toastData.name}</p>
-                  <p className="text-[10px] text-[#4a4a68] truncate">{toastData.action} &middot; {toastData.time}</p>
-                </div>
-              </div>
-            </div>
-          )}
-
           {/* Hero */}
           <section className="relative max-w-7xl mx-auto px-4 md:px-6">
             <div className="text-center pt-4 pb-2">
@@ -364,75 +280,56 @@ export default function Home() {
                 <div className="absolute inset-x-0 bottom-0 h-32 sm:h-64 bg-gradient-to-t from-[#050508] via-[#050508]/80 to-transparent" />
               </div>
               <div className="relative -mt-12 sm:-mt-36 z-10 space-y-4 sm:space-y-5 px-2 sm:px-0">
-                {/* Live counter badge */}
-                <div className="inline-flex items-center gap-2 sm:gap-2.5 px-3.5 sm:px-5 py-1.5 sm:py-2 rounded-full bg-gradient-to-r from-[#7c6cf0]/10 to-[#00e8b0]/10 border border-[#7c6cf0]/20 backdrop-blur-sm">
-                  <div className="w-2 h-2 rounded-full bg-[#00e8b0] live-dot flex-shrink-0" />
-                  <span className="text-[10px] sm:text-[11px] text-[#d0ccf0] font-semibold tracking-wide">
-                    <span className="text-[#00e8b0] font-mono tabular-nums">{activeNow}</span> scanning now &middot; <span className="text-[#9d8ff8] font-mono tabular-nums">{liveScans.toLocaleString()}</span> scans today
-                  </span>
-                </div>
-
-                <h2 className="font-display text-3xl sm:text-4xl md:text-6xl lg:text-7xl font-extrabold leading-[1.05] tracking-[-0.03em]">
-                  <span className="gradient-text-shimmer">Your Brain on Screen</span>
+                <h2 className="font-display text-3xl sm:text-4xl md:text-6xl lg:text-7xl font-bold leading-[1.05] tracking-[-0.03em]">
+                  <span className="gradient-text">Your Brain on Screen</span>
                   <br />
-                  <span className="gradient-text">Decoded in Seconds</span>
+                  <span className="text-[#f0f0f8]">Decoded in Seconds</span>
                 </h2>
 
-                <p className="text-[#f0f0f8]/70 text-lg sm:text-xl md:text-2xl font-bold tracking-tight">
-                  5 AI experts map your neural response. <span className="text-[#00e8b0]">Zero signup. 100% free.</span>
+                <p className="text-[#f0f0f8]/60 text-base sm:text-lg md:text-xl font-medium tracking-tight max-w-2xl mx-auto">
+                  Five independent AI experts analyze your content and map neural activation across 12 brain regions. Free, instant, no account required.
                 </p>
 
-                <p className="text-[#7a7a98] max-w-xl mx-auto text-xs sm:text-sm leading-relaxed font-medium">
-                  Drop any file — ads, selfies, playlists, browsing history, screen time data — and watch
-                  5 AI agents light up your 12 brain regions in real time. No account. No credit card. Just science.
+                <p className="text-[#7a7a98] max-w-xl mx-auto text-xs sm:text-sm leading-relaxed">
+                  Upload ads, photos, music, browsing data, or screen time — our multi-agent consensus engine scores 37 neuromarketing features in under 30 seconds.
                 </p>
 
                 {/* Hero CTA */}
-                <div className="flex flex-col sm:flex-row items-center justify-center gap-3 pt-3">
+                <div className="flex flex-col sm:flex-row items-center justify-center gap-3 pt-4">
                   <button
                     onClick={() => selectMode("ab-testing")}
-                    className="relative group w-full sm:w-auto"
+                    className="w-full sm:w-auto px-8 sm:px-10 py-3.5 sm:py-4 rounded-xl bg-[#7c6cf0] hover:bg-[#8d7ff8] text-white font-semibold text-sm sm:text-base flex items-center justify-center gap-2.5 transition-all duration-200 active:scale-[0.97]"
                   >
-                    <div className="absolute -inset-[2px] rounded-2xl bg-gradient-to-r from-[#7c6cf0] via-[#00e8b0] to-[#ff6090] opacity-60 group-hover:opacity-100 blur-md transition-opacity duration-500" />
-                    <div className="relative px-8 sm:px-10 py-3.5 sm:py-4 rounded-2xl bg-gradient-to-r from-[#7c6cf0] to-[#00e8b0] text-white font-bold text-sm sm:text-base flex items-center justify-center gap-2.5 transition-all duration-300 group-hover:shadow-[0_20px_60px_rgba(124,108,240,0.4)] group-active:scale-[0.97]">
-                      <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" /></svg>
-                      Start Neural Scan — Free
-                    </div>
+                    <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" /></svg>
+                    Start Neural Scan
                   </button>
                   <button
                     onClick={() => { document.getElementById("modes")?.scrollIntoView({ behavior: "smooth" }); }}
-                    className="px-6 py-3.5 rounded-2xl text-[#7a7a98] hover:text-[#f0f0f8] active:text-[#f0f0f8] text-sm font-semibold transition-colors flex items-center gap-2"
+                    className="px-6 py-3.5 text-[#7a7a98] hover:text-[#f0f0f8] active:text-[#f0f0f8] text-sm font-medium transition-colors flex items-center gap-2"
                   >
-                    Explore 7 Modes
+                    Explore All Modes
                     <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" /></svg>
                   </button>
                 </div>
               </div>
             </div>
-
-            {/* Scroll indicator */}
-            <div className="flex justify-center mt-6 sm:mt-8">
-              <div className="bounce-indicator">
-                <svg className="w-5 h-5 text-[#4a4a68]" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M19 14l-7 7m0 0l-7-7m7 7V3" /></svg>
-              </div>
-            </div>
           </section>
 
-          {/* Stats — live counters */}
-          <section className="relative border-y border-[#1e1e30]/40 bg-[#0c0c14] sm:bg-[#0c0c14]/50 sm:backdrop-blur-xl mt-6 sm:mt-8">
+          {/* Platform stats */}
+          <section className="border-y border-[#1e1e30]/40 bg-[#0c0c14]/50 mt-8 sm:mt-10">
             <div className="max-w-5xl mx-auto px-4 md:px-6 py-5 sm:py-6">
               <div className="grid grid-cols-4 gap-3 sm:gap-8">
                 {[
-                  { value: statScans, label: "Scans Today", color: "#7c6cf0", suffix: "" },
-                  { value: statAgents, label: "AI Agents", color: "#00e8b0", suffix: "" },
-                  { value: statRegions, label: "Brain Regions", color: "#9d8ff8", suffix: "" },
-                  { value: statFeatures, label: "Features", color: "#ff6090", suffix: "" },
+                  { value: "5", label: "Expert Agents", color: "#7c6cf0" },
+                  { value: "12", label: "Brain Regions", color: "#9d8ff8" },
+                  { value: "37", label: "Features Scored", color: "#00e8b0" },
+                  { value: "7", label: "Analysis Modes", color: "#00c49a" },
                 ].map((stat) => (
                   <div key={stat.label} className="text-center">
-                    <div className={`text-xl sm:text-3xl md:text-4xl font-black tabular-nums tracking-tight transition-all duration-700 font-mono ${statsVisible ? "opacity-100 translate-y-0" : "opacity-0 translate-y-4"}`} style={{ color: stat.color }}>
-                      {stat.value.toLocaleString()}{stat.suffix}
+                    <div className="text-xl sm:text-3xl md:text-4xl font-bold tabular-nums tracking-tight font-mono" style={{ color: stat.color }}>
+                      {stat.value}
                     </div>
-                    <p className="text-[9px] sm:text-[11px] text-[#4a4a68] font-semibold uppercase tracking-[0.1em] sm:tracking-[0.15em] mt-0.5 sm:mt-1">{stat.label}</p>
+                    <p className="text-[9px] sm:text-[11px] text-[#4a4a68] font-medium uppercase tracking-[0.1em] sm:tracking-[0.15em] mt-0.5 sm:mt-1">{stat.label}</p>
                   </div>
                 ))}
               </div>
@@ -487,7 +384,7 @@ export default function Home() {
                 <h3 className="font-display text-xl sm:text-2xl md:text-4xl font-bold text-[#f0f0f8] tracking-[-0.02em]">
                   7 Ways to Read Your Mind
                 </h3>
-                <p className="text-xs sm:text-sm text-[#4a4a68] mt-2 font-medium">Pick one. You won&apos;t be able to stop at just one.</p>
+                <p className="text-xs sm:text-sm text-[#4a4a68] mt-2 font-medium">Each mode uses a dedicated neural analysis pipeline.</p>
               </div>
             </div>
 
@@ -638,9 +535,9 @@ export default function Home() {
 
               <div className="grid grid-cols-1 md:grid-cols-3 gap-4 sm:gap-6">
                 {[
-                  { step: "01", title: "Drop Anything In", desc: "Drag and drop any file. Paste any URL. Type any text. We eat all formats for breakfast.", color: "#7c6cf0", emoji: "" },
-                  { step: "02", title: "5 AI Brains Argue", desc: "A neuroscientist, psychologist, creative director, marketer, and economist score your content independently. Then they fight about it.", color: "#9d8ff8", emoji: "" },
-                  { step: "03", title: "Your Brain, Mapped", desc: "See exactly which of your 12 brain regions light up. Get recommendations that actually make sense.", color: "#00e8b0", emoji: "" },
+                  { step: "01", title: "Upload Your Content", desc: "Drag and drop any file — video, image, audio — or paste a URL. Supports all major formats and platforms.", color: "#7c6cf0", emoji: "" },
+                  { step: "02", title: "Multi-Agent Analysis", desc: "Five specialized AI agents — neuroscientist, psychologist, creative director, marketer, and economist — each score your content independently.", color: "#9d8ff8", emoji: "" },
+                  { step: "03", title: "Neural Map & Insights", desc: "See exactly which brain regions activate, get a consensus score across 37 features, and receive actionable optimization recommendations.", color: "#00e8b0", emoji: "" },
                 ].map((item) => (
                   <div key={item.step} className="scroll-reveal glass-card glass-card-hover rounded-2xl p-5 sm:p-7 group" style={{ animationDelay: `${parseInt(item.step) * 80}ms` }}>
                     <div className="flex items-center gap-3 sm:gap-4 mb-4 sm:mb-5">
@@ -663,7 +560,7 @@ export default function Home() {
             <div className="max-w-5xl mx-auto px-4 md:px-6 py-10 sm:py-16 relative">
               <div className="scroll-reveal text-center mb-8 sm:mb-12">
                 <p className="text-[10px] text-[#9d8ff8] font-bold uppercase tracking-[0.3em] mb-3">The Panel</p>
-                <h3 className="font-display text-xl sm:text-2xl md:text-3xl font-bold text-[#f0f0f8] tracking-[-0.02em]">5 Experts. One Verdict. Zero BS.</h3>
+                <h3 className="font-display text-xl sm:text-2xl md:text-3xl font-bold text-[#f0f0f8] tracking-[-0.02em]">Five Experts. One Consensus Verdict.</h3>
                 <p className="text-xs sm:text-sm text-[#4a4a68] mt-2 max-w-lg mx-auto">Each agent scores independently. We drop the highest and lowest, then average. No single AI bias can skew your results.</p>
               </div>
 
@@ -696,23 +593,20 @@ export default function Home() {
                   <div className="w-[400px] h-[400px] rounded-full bg-[#7c6cf0]/[0.06] blur-[100px] blob-1" />
                 </div>
 
-                <h3 className="font-display text-2xl sm:text-3xl md:text-5xl font-extrabold text-[#f0f0f8] tracking-[-0.03em] mb-4 relative">
+                <h3 className="font-display text-2xl sm:text-3xl md:text-5xl font-bold text-[#f0f0f8] tracking-[-0.03em] mb-4 relative">
                   Your brain is already deciding.
                   <br />
-                  <span className="gradient-text-shimmer">Let us show you how.</span>
+                  <span className="gradient-text">Let us show you how.</span>
                 </h3>
                 <p className="text-sm sm:text-base text-[#7a7a98] mb-8 max-w-md mx-auto">
-                  Join <span className="text-[#00e8b0] font-bold font-mono tabular-nums">{liveScans.toLocaleString()}</span> neural scans completed today. Free. No account needed.
+                  Free. No account needed. Results in under 30 seconds.
                 </p>
                 <button
                   onClick={() => selectMode("ab-testing")}
-                  className="relative group inline-flex"
+                  className="px-10 sm:px-14 py-4 sm:py-5 rounded-xl bg-[#7c6cf0] hover:bg-[#8d7ff8] text-white font-semibold text-base sm:text-lg flex items-center gap-3 transition-all duration-200 active:scale-[0.97]"
                 >
-                  <div className="absolute -inset-[2px] rounded-2xl opacity-70 group-hover:opacity-100 blur-md transition-opacity duration-500" style={{ background: "conic-gradient(from 0deg, #7c6cf0, #00e8b0, #ff6090, #ffb020, #7c6cf0)" }} />
-                  <div className="relative px-10 sm:px-14 py-4 sm:py-5 rounded-2xl bg-[#0c0c14] text-white font-bold text-base sm:text-lg flex items-center gap-3 group-hover:bg-[#111119] transition-all duration-300 group-active:scale-[0.97]">
-                    <svg className="w-5 h-5 sm:w-6 sm:h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z" /></svg>
-                    Scan My Brain Now
-                  </div>
+                  <svg className="w-5 h-5 sm:w-6 sm:h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z" /></svg>
+                  Start Neural Scan
                 </button>
               </div>
             </div>
