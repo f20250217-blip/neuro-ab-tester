@@ -1,3 +1,11 @@
+import type { Metadata } from "next";
+
+export const metadata: Metadata = {
+  title: "Privacy Policy",
+  description: "NeuroTest AI privacy policy. Learn how we handle your data in our browser extension and web application.",
+  alternates: { canonical: "/privacy" },
+};
+
 export default function PrivacyPage() {
   return (
     <div className="min-h-screen bg-[#050508] text-[#f0f0f8]">

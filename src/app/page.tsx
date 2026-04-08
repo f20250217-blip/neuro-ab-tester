@@ -287,11 +287,11 @@ export default function Home() {
                 <div className="absolute inset-x-0 bottom-0 h-32 sm:h-64 bg-gradient-to-t from-[#050508] via-[#050508]/80 to-transparent" />
               </div>
               <div className="relative -mt-12 sm:-mt-36 z-10 space-y-4 sm:space-y-5 px-2 sm:px-0">
-                <h2 className="font-display text-3xl sm:text-4xl md:text-6xl lg:text-7xl font-bold leading-[1.05] tracking-[-0.03em]">
+                <h1 className="font-display text-3xl sm:text-4xl md:text-6xl lg:text-7xl font-bold leading-[1.05] tracking-[-0.03em]">
                   <span className="gradient-text-shimmer">Your Brain on Screen</span>
                   <br />
                   <span className="text-[#f0f0f8]">Decoded in Seconds</span>
-                </h2>
+                </h1>
 
                 <p className="text-[#f0f0f8]/60 text-base sm:text-lg md:text-xl font-medium tracking-tight max-w-2xl mx-auto">
                   Five independent AI experts analyze your content and map neural activation across 12 brain regions. Free, instant, no account required.
