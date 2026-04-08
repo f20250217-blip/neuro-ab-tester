@@ -40,6 +40,17 @@ body {
   -moz-osx-font-smoothing: grayscale;
 }
 
+/* Display font for hero headings */
+.font-display {
+  font-family: 'Space Grotesk', 'Inter', -apple-system, sans-serif;
+}
+
+/* Ultra-smooth touch interactions */
+button, a, [role="button"] {
+  touch-action: manipulation;
+  -webkit-tap-highlight-color: transparent;
+}
+
 /* Premium scrollbar */
 ::-webkit-scrollbar {
   width: 5px;
@@ -567,4 +578,81 @@ body {
   .full-mobile-height {
     height: 100dvh;
   }
+}
+
+/* Smooth scroll containers */
+.scroll-container {
+  -webkit-overflow-scrolling: touch;
+  overscroll-behavior: contain;
+}
+
+/* Neural pulse glow for logo */
+@keyframes neural-pulse {
+  0%, 100% { filter: drop-shadow(0 0 6px rgba(124, 108, 240, 0.3)) drop-shadow(0 0 12px rgba(0, 232, 176, 0.15)); }
+  50% { filter: drop-shadow(0 0 12px rgba(124, 108, 240, 0.5)) drop-shadow(0 0 24px rgba(0, 232, 176, 0.25)); }
+}
+
+.logo-glow {
+  animation: neural-pulse 3s ease-in-out infinite;
+}
+
+/* Smooth page transitions */
+@keyframes page-enter {
+  0% { opacity: 0; transform: translateY(12px); }
+  100% { opacity: 1; transform: translateY(0); }
+}
+
+.page-enter {
+  animation: page-enter 0.4s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+/* Gradient border glow for premium cards */
+.premium-card {
+  position: relative;
+  background: linear-gradient(135deg, rgba(17, 17, 25, 0.95), rgba(12, 12, 20, 0.98));
+  border: 1px solid rgba(124, 108, 240, 0.08);
+  transition: border-color 0.4s ease, box-shadow 0.4s ease, transform 0.4s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+.premium-card:hover {
+  border-color: rgba(124, 108, 240, 0.15);
+  box-shadow: 0 0 40px rgba(124, 108, 240, 0.06), 0 8px 32px rgba(0, 0, 0, 0.3);
+  transform: translateY(-2px);
+}
+
+/* Streak counter animation */
+@keyframes count-up {
+  from { opacity: 0; transform: scale(0.8) translateY(4px); }
+  to { opacity: 1; transform: scale(1) translateY(0); }
+}
+
+.count-animate {
+  animation: count-up 0.3s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+/* Floating label style */
+.floating-badge {
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  background: rgba(12, 12, 20, 0.6);
+  border: 1px solid rgba(124, 108, 240, 0.12);
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3);
+}
+
+/* Micro-interaction: scale bounce on click */
+.click-bounce:active {
+  transform: scale(0.95);
+  transition: transform 0.1s ease;
+}
+
+/* Smooth gradient shift for hero */
+@keyframes gradient-shift {
+  0% { background-position: 0% 50%; }
+  50% { background-position: 100% 50%; }
+  100% { background-position: 0% 50%; }
+}
+
+.gradient-animate {
+  background-size: 200% 200%;
+  animation: gradient-shift 8s ease infinite;
 }

@@ -8,7 +8,7 @@
 }
 
 body {
-  width: 380px;
+  width: 400px;
   max-height: 580px;
   overflow-y: auto;
   background: #050508;
@@ -54,7 +54,7 @@ body::-webkit-scrollbar-thumb { background: #2d2d50; border-radius: 10px; }
   justify-content: space-between;
   padding: 14px 16px;
   border-bottom: 1px solid #1e1e30;
-  background: #0c0c14;
+  background: linear-gradient(180deg, #0c0c14 0%, #080810 100%);
 }
 
 .header-left {
@@ -132,6 +132,12 @@ body::-webkit-scrollbar-thumb { background: #2d2d50; border-radius: 10px; }
   border-radius: 12px;
   padding: 10px 8px;
   text-align: center;
+  transition: transform 0.2s ease, border-color 0.2s ease;
+}
+
+.stat-card:hover {
+  transform: translateY(-1px);
+  border-color: #2d2d50;
 }
 
 .stat-value {
@@ -217,16 +223,17 @@ body::-webkit-scrollbar-thumb { background: #2d2d50; border-radius: 10px; }
 
 .category-bar-wrap {
   flex: 1;
-  height: 4px;
+  height: 5px;
   background: #0c0c14;
-  border-radius: 4px;
+  border-radius: 5px;
   overflow: hidden;
 }
 
 .category-bar {
   height: 100%;
-  border-radius: 4px;
+  border-radius: 5px;
   transition: width 0.6s cubic-bezier(0.4, 0, 0.2, 1);
+  box-shadow: 0 0 6px rgba(124, 108, 240, 0.3);
 }
 
 .category-item {
@@ -370,6 +377,8 @@ body::-webkit-scrollbar-thumb { background: #2d2d50; border-radius: 10px; }
 }
 
 .btn-primary {
+  position: relative;
+  z-index: 1;
   width: 100%;
   padding: 12px;
   border: none;
@@ -385,6 +394,22 @@ body::-webkit-scrollbar-thumb { background: #2d2d50; border-radius: 10px; }
   gap: 8px;
   transition: all 0.3s;
   box-shadow: 0 4px 20px rgba(124, 108, 240, 0.25);
+}
+
+.btn-primary::before {
+  content: '';
+  position: absolute;
+  inset: -1px;
+  border-radius: 13px;
+  background: linear-gradient(135deg, #7c6cf0, #00e8b0);
+  opacity: 0;
+  transition: opacity 0.3s;
+  z-index: -1;
+  filter: blur(8px);
+}
+
+.btn-primary:hover::before {
+  opacity: 0.5;
 }
 
 .btn-primary:hover {
@@ -516,3 +541,32 @@ body::-webkit-scrollbar-thumb { background: #2d2d50; border-radius: 10px; }
 }
 
 .empty-state p { margin-top: 6px; font-size: 11px; }
+
+/* App entrance animation */
+.app {
+  animation: fadeInUp 0.3s ease-out;
+}
+
+@keyframes fadeInUp {
+  from { opacity: 0; transform: translateY(8px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+/* Footer */
+.footer {
+  padding: 8px 16px 12px;
+  text-align: center;
+  font-size: 9px;
+  color: #2d2d50;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+}
+
+.footer-brand {
+  font-weight: 700;
+  background: linear-gradient(135deg, #7c6cf0, #00e8b0);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+}

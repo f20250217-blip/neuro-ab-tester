@@ -300,13 +300,16 @@ export default function Home() {
       <header className="border-b border-[#1e1e30]/60 bg-[#050508]/95 sm:bg-[#050508]/80 sm:backdrop-blur-xl sticky top-0 z-50 no-select">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 py-3 sm:py-3.5 flex items-center justify-between">
           <div className="flex items-center gap-2.5 sm:gap-3.5 cursor-pointer group" onClick={reset}>
-            <div className="w-9 h-9 sm:w-10 sm:h-10 rounded-xl bg-gradient-to-br from-[#7c6cf0] to-[#00e8b0] flex items-center justify-center shadow-lg shadow-[#7c6cf0]/20 flex-shrink-0">
-              <svg className="w-4 h-4 sm:w-5 sm:h-5 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z" />
+            <div className="w-9 h-9 sm:w-10 sm:h-10 rounded-xl bg-gradient-to-br from-[#7c6cf0] to-[#00e8b0] flex items-center justify-center shadow-lg shadow-[#7c6cf0]/20 flex-shrink-0 logo-glow">
+              <svg className="w-4 h-4 sm:w-5 sm:h-5 text-white" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.5} strokeLinecap="round" strokeLinejoin="round">
+                <path d="M12 2C8.5 2 5 4.5 5 8c0 1.5.5 3 1.5 4C5.5 13 5 14.5 5 16c0 3.5 3.5 6 7 6s7-2.5 7-6c0-1.5-.5-3-1.5-4 1-1 1.5-2.5 1.5-4 0-3.5-3.5-6-7-6z" />
+                <path d="M12 2v20" />
+                <path d="M5 8h14" />
+                <path d="M5 16h14" />
               </svg>
             </div>
             <div>
-              <h1 className="text-sm sm:text-base font-bold gradient-text leading-tight tracking-tight">NeuroTest AI</h1>
+              <h1 className="text-sm sm:text-base font-bold gradient-text leading-tight tracking-tight font-display">NeuroTest AI</h1>
               <p className="text-[9px] sm:text-[10px] text-[#4a4a68] tracking-[0.15em] sm:tracking-[0.2em] uppercase font-medium hidden sm:block">Neural Intelligence Platform</p>
             </div>
           </div>
@@ -369,19 +372,19 @@ export default function Home() {
                   </span>
                 </div>
 
-                <h2 className="text-3xl sm:text-4xl md:text-6xl lg:text-7xl font-extrabold leading-[1.05] tracking-[-0.03em]">
-                  <span className="gradient-text-shimmer">See What Your Brain</span>
+                <h2 className="font-display text-3xl sm:text-4xl md:text-6xl lg:text-7xl font-extrabold leading-[1.05] tracking-[-0.03em]">
+                  <span className="gradient-text-shimmer">Your Brain on Screen</span>
                   <br />
-                  <span className="gradient-text">Can&apos;t Hide</span>
+                  <span className="gradient-text">Decoded in Seconds</span>
                 </h2>
 
                 <p className="text-[#f0f0f8]/70 text-lg sm:text-xl md:text-2xl font-bold tracking-tight">
-                  AI reads your digital fingerprint. <span className="text-[#00e8b0]">Every click tells a story.</span>
+                  5 AI experts map your neural response. <span className="text-[#00e8b0]">Zero signup. 100% free.</span>
                 </p>
 
                 <p className="text-[#7a7a98] max-w-xl mx-auto text-xs sm:text-sm leading-relaxed font-medium">
-                  Upload anything — ads, photos, playlists, browsing history, screen time — and 5 AI experts
-                  map your neural response across 12 brain regions in real time.
+                  Drop any file — ads, selfies, playlists, browsing history, screen time data — and watch
+                  5 AI agents light up your 12 brain regions in real time. No account. No credit card. Just science.
                 </p>
 
                 {/* Hero CTA */}
@@ -481,7 +484,7 @@ export default function Home() {
             <div className="scroll-reveal">
               <div className="text-center mb-8 sm:mb-12">
                 <p className="text-[10px] font-bold uppercase tracking-[0.3em] mb-3 text-[#7c6cf0]">Choose Your Analysis</p>
-                <h3 className="text-xl sm:text-2xl md:text-4xl font-bold text-[#f0f0f8] tracking-[-0.02em]">
+                <h3 className="font-display text-xl sm:text-2xl md:text-4xl font-bold text-[#f0f0f8] tracking-[-0.02em]">
                   7 Ways to Read Your Mind
                 </h3>
                 <p className="text-xs sm:text-sm text-[#4a4a68] mt-2 font-medium">Pick one. You won&apos;t be able to stop at just one.</p>
@@ -542,7 +545,7 @@ export default function Home() {
                         <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-[#ff6090]/10 border border-[#ff6090]/20">
                           <span className="text-[10px] font-bold text-[#ff6090] uppercase tracking-wider">New — Browser Extension</span>
                         </div>
-                        <h3 className="text-2xl sm:text-3xl md:text-4xl font-extrabold text-[#f0f0f8] tracking-[-0.03em] leading-tight">
+                        <h3 className="font-display text-2xl sm:text-3xl md:text-4xl font-extrabold text-[#f0f0f8] tracking-[-0.03em] leading-tight">
                           Your browser knows you<br />
                           <span className="gradient-text">better than you think.</span>
                         </h3>
@@ -571,7 +574,7 @@ export default function Home() {
                           {/* Fake extension popup preview */}
                           <div className="bg-[#0c0c14] px-4 py-3 border-b border-[#1e1e30] flex items-center gap-2.5">
                             <div className="w-6 h-6 rounded-md bg-gradient-to-br from-[#7c6cf0] to-[#00e8b0] flex items-center justify-center">
-                              <svg className="w-3 h-3 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" /></svg>
+                              <svg className="w-3 h-3 text-white" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.5} strokeLinecap="round" strokeLinejoin="round"><path d="M12 2C8.5 2 5 4.5 5 8c0 1.5.5 3 1.5 4C5.5 13 5 14.5 5 16c0 3.5 3.5 6 7 6s7-2.5 7-6c0-1.5-.5-3-1.5-4 1-1 1.5-2.5 1.5-4 0-3.5-3.5-6-7-6z" /><path d="M12 2v20" /><path d="M5 8h14" /><path d="M5 16h14" /></svg>
                             </div>
                             <span className="text-[11px] font-bold gradient-text">NeuroTest AI</span>
                             <div className="ml-auto flex items-center gap-1.5">
@@ -630,7 +633,7 @@ export default function Home() {
             <div className="max-w-5xl mx-auto px-4 md:px-6 py-10 sm:py-16 relative">
               <div className="scroll-reveal text-center mb-8 sm:mb-12">
                 <p className="text-[10px] text-[#00e8b0] font-bold uppercase tracking-[0.3em] mb-3">How It Works</p>
-                <h3 className="text-xl sm:text-2xl md:text-3xl font-bold text-[#f0f0f8] tracking-[-0.02em]">30 Seconds. Zero Signup. Full Neural Map.</h3>
+                <h3 className="font-display text-xl sm:text-2xl md:text-3xl font-bold text-[#f0f0f8] tracking-[-0.02em]">30 Seconds. Zero Signup. Full Neural Map.</h3>
               </div>
 
               <div className="grid grid-cols-1 md:grid-cols-3 gap-4 sm:gap-6">
@@ -660,7 +663,7 @@ export default function Home() {
             <div className="max-w-5xl mx-auto px-4 md:px-6 py-10 sm:py-16 relative">
               <div className="scroll-reveal text-center mb-8 sm:mb-12">
                 <p className="text-[10px] text-[#9d8ff8] font-bold uppercase tracking-[0.3em] mb-3">The Panel</p>
-                <h3 className="text-xl sm:text-2xl md:text-3xl font-bold text-[#f0f0f8] tracking-[-0.02em]">5 Experts. One Verdict. Zero BS.</h3>
+                <h3 className="font-display text-xl sm:text-2xl md:text-3xl font-bold text-[#f0f0f8] tracking-[-0.02em]">5 Experts. One Verdict. Zero BS.</h3>
                 <p className="text-xs sm:text-sm text-[#4a4a68] mt-2 max-w-lg mx-auto">Each agent scores independently. We drop the highest and lowest, then average. No single AI bias can skew your results.</p>
               </div>
 
@@ -693,7 +696,7 @@ export default function Home() {
                   <div className="w-[400px] h-[400px] rounded-full bg-[#7c6cf0]/[0.06] blur-[100px] blob-1" />
                 </div>
 
-                <h3 className="text-2xl sm:text-3xl md:text-5xl font-extrabold text-[#f0f0f8] tracking-[-0.03em] mb-4 relative">
+                <h3 className="font-display text-2xl sm:text-3xl md:text-5xl font-extrabold text-[#f0f0f8] tracking-[-0.03em] mb-4 relative">
                   Your brain is already deciding.
                   <br />
                   <span className="gradient-text-shimmer">Let us show you how.</span>
@@ -715,18 +718,55 @@ export default function Home() {
             </div>
           </section>
 
-          {/* Footer */}
-          <section className="border-t border-[#1e1e30]/40">
-            <div className="max-w-5xl mx-auto px-4 md:px-6 py-8 sm:py-10">
-              <div className="flex flex-wrap justify-center items-center gap-x-6 sm:gap-x-10 gap-y-3 text-[11px] sm:text-xs text-[#4a4a68] font-medium">
-                {["Groq + Cerebras AI", "5-Agent Consensus", "Real Neuroscience", "Zero Data Stored", "100% Free"].map((t, i) => (
-                  <div key={t} className="flex items-center gap-2">
-                    <div className="w-1.5 h-1.5 rounded-full" style={{ backgroundColor: ["#00e8b0", "#7c6cf0", "#9d8ff8", "#00c49a", "#ff6090"][i] }} />
-                    <span>{t}</span>
+          {/* Trust Strip */}
+          <section className="border-t border-[#1e1e30]/40 bg-[#0c0c14]/30">
+            <div className="max-w-5xl mx-auto px-4 md:px-6 py-8 sm:py-12">
+              <div className="scroll-reveal text-center mb-6">
+                <p className="text-[10px] text-[#4a4a68] font-bold uppercase tracking-[0.3em]">Built With</p>
+              </div>
+              <div className="flex flex-wrap justify-center items-center gap-6 sm:gap-10 opacity-40">
+                {[
+                  { name: "Groq", desc: "Inference" },
+                  { name: "Cerebras", desc: "Fallback AI" },
+                  { name: "Llama 4", desc: "Vision Model" },
+                  { name: "Next.js", desc: "Framework" },
+                  { name: "Three.js", desc: "3D Brain" },
+                ].map(tech => (
+                  <div key={tech.name} className="text-center group hover:opacity-100 transition-opacity">
+                    <p className="text-sm sm:text-base font-bold text-[#f0f0f8] tracking-tight">{tech.name}</p>
+                    <p className="text-[9px] text-[#4a4a68] uppercase tracking-wider">{tech.desc}</p>
                   </div>
                 ))}
               </div>
-              <p className="text-center text-[10px] text-[#2d2d50] mt-4 sm:mt-6 font-medium">NeuroTest AI — Neural Intelligence Platform</p>
+            </div>
+          </section>
+
+          {/* Footer */}
+          <section className="border-t border-[#1e1e30]/40">
+            <div className="max-w-5xl mx-auto px-4 md:px-6 py-8 sm:py-10">
+              <div className="flex flex-col sm:flex-row items-center justify-between gap-6">
+                <div className="flex items-center gap-3">
+                  <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-[#7c6cf0] to-[#00e8b0] flex items-center justify-center">
+                    <svg className="w-4 h-4 text-white" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.5} strokeLinecap="round" strokeLinejoin="round">
+                      <path d="M12 2C8.5 2 5 4.5 5 8c0 1.5.5 3 1.5 4C5.5 13 5 14.5 5 16c0 3.5 3.5 6 7 6s7-2.5 7-6c0-1.5-.5-3-1.5-4 1-1 1.5-2.5 1.5-4 0-3.5-3.5-6-7-6z" />
+                      <path d="M12 2v20" /><path d="M5 8h14" /><path d="M5 16h14" />
+                    </svg>
+                  </div>
+                  <div>
+                    <p className="text-sm font-bold gradient-text">NeuroTest AI</p>
+                    <p className="text-[9px] text-[#4a4a68] uppercase tracking-wider">Neural Intelligence Platform</p>
+                  </div>
+                </div>
+                <div className="flex flex-wrap justify-center items-center gap-x-6 gap-y-2 text-[11px] text-[#4a4a68] font-medium">
+                  <a href="/install" className="hover:text-[#7a7a98] transition-colors">Extension</a>
+                  <a href="/privacy" className="hover:text-[#7a7a98] transition-colors">Privacy</a>
+                  <span>5-Agent Consensus</span>
+                  <span>Zero Data Stored</span>
+                  <span>100% Free</span>
+                </div>
+              </div>
+              <div className="divider-gradient mt-6 mb-4" />
+              <p className="text-center text-[10px] text-[#2d2d50] font-medium">&copy; 2026 NeuroTest AI. Built for the curious mind.</p>
             </div>
           </section>
         </main>
