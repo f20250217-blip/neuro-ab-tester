@@ -1,6 +1,6 @@
 "use client";
 
-import { useRef, useMemo, useState, useEffect, useCallback } from "react";
+import { useRef, useMemo, useState, useEffect } from "react";
 import { Canvas, useFrame, useThree } from "@react-three/fiber";
 import { OrbitControls, Float, useGLTF } from "@react-three/drei";
 import * as THREE from "three";
@@ -384,7 +384,6 @@ interface Brain3DProps {
   className?: string;
   autoRotate?: boolean;
   showParticles?: boolean;
-  interactive?: boolean;
 }
 
 export default function Brain3D({ regions, className = "", autoRotate = true, showParticles = false }: Brain3DProps) {

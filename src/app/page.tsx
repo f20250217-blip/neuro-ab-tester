@@ -552,7 +552,7 @@ export default function Home() {
                         </p>
                         <div className="flex flex-col sm:flex-row items-center gap-3 pt-2">
                           <a
-                            href="/extension/neurotest-extension.zip"
+                            href="/install"
                             className="relative group inline-flex w-full sm:w-auto"
                           >
                             <div className="absolute -inset-[1px] rounded-2xl bg-gradient-to-r from-[#7c6cf0] to-[#ff6090] opacity-50 group-hover:opacity-100 blur-sm transition-opacity duration-500" />
@@ -1439,7 +1439,7 @@ function BrainCard({ analysis, color, label }: { analysis: NeuralAnalysis; color
         </div>
       </div>
       <div className="h-[220px] md:h-[300px] bg-[#050508] relative">
-        <Brain3D regions={analysis.regions} className="w-full h-full" showParticles interactive />
+        <Brain3D regions={analysis.regions} className="w-full h-full" showParticles />
         <div className="absolute bottom-3 left-3 right-3 flex flex-wrap gap-1.5">
           {analysis.regions.filter((r) => r.activation > 0.5).sort((a, b) => b.activation - a.activation).slice(0, 4).map((r) => (
             <span key={r.id} className="px-2.5 py-1 rounded-lg text-[9px] font-semibold bg-[#050508]/80 backdrop-blur-md border border-white/5" style={{ color: r.color }}>
