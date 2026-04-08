@@ -238,7 +238,11 @@ function parseAnalysisResponse(text: string) {
 export async function POST(request: NextRequest) {
   try {
     const formData = await request.formData();
+    const ALLOWED_MODES = ["photo", "music", "browsing", "social", "text", "screen-time"];
     const mode = (formData.get("mode") as string) || "photo";
+    if (!ALLOWED_MODES.includes(mode)) {
+      return NextResponse.json({ error: "Invalid analysis mode" }, { status: 400 });
+    }
     const file = formData.get("file") as File | null;
     const text = formData.get("text") as string | null;
     const url = formData.get("url") as string | null;
@@ -253,6 +257,9 @@ export async function POST(request: NextRequest) {
     const contentParts: ChatCompletionContentPart[] = [];
 
     if (file) {
+      if (file.size > 50 * 1024 * 1024) {
+        return NextResponse.json({ error: "File too large. Maximum size: 50MB" }, { status: 400 });
+      }
       const bytes = await file.arrayBuffer();
       const base64 = Buffer.from(bytes).toString("base64");
       const mime = file.type || "application/octet-stream";
@@ -285,9 +292,15 @@ export async function POST(request: NextRequest) {
     }
 
     if (url) {
+      // Sanitize URL - only pass the hostname to prevent prompt injection
+      let safeUrl = url;
+      try {
+        const parsed = new URL(url);
+        safeUrl = `${parsed.protocol}//${parsed.hostname}${parsed.pathname}`;
+      } catch { /* use raw url if invalid */ }
       contentParts.push({
         type: "text",
-        text: `URL TO ANALYZE: ${url}`,
+        text: `URL TO ANALYZE: ${safeUrl}`,
       });
     }
 
@@ -351,8 +364,11 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ analysis });
   } catch (error: any) {
     console.error("Profile analysis error:", error.message?.slice(0, 300));
+    const safeMessage = (error.message && !error.message.includes('API') && !error.message.includes('key') && !error.message.includes('token'))
+      ? error.message
+      : 'Analysis failed. Please try again.';
     return NextResponse.json(
-      { error: error.message || "Analysis failed" },
+      { error: safeMessage },
       { status: 500 }
     );
   }

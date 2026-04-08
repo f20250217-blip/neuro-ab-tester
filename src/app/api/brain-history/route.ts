@@ -95,6 +95,23 @@ export async function POST(request: NextRequest) {
     const body = await request.json();
     const { sessionMinutes, totalMinutes, siteCount, topSites, categories, timestamp } = body;
 
+    // Input validation
+    if (typeof sessionMinutes !== 'number' || sessionMinutes < 0 || sessionMinutes > 10080) {
+      return NextResponse.json({ error: "Invalid session data" }, { status: 400 });
+    }
+    if (!Array.isArray(topSites) || topSites.length > 100) {
+      return NextResponse.json({ error: "Invalid browsing data" }, { status: 400 });
+    }
+    if (typeof categories !== 'object' || categories === null || Object.keys(categories).length > 50) {
+      return NextResponse.json({ error: "Invalid category data" }, { status: 400 });
+    }
+    // Validate individual site entries
+    for (const site of topSites) {
+      if (typeof site.host !== 'string' || site.host.length > 255) {
+        return NextResponse.json({ error: "Invalid site data" }, { status: 400 });
+      }
+    }
+
     if (!topSites || topSites.length === 0) {
       return NextResponse.json({ error: "No browsing data provided" }, { status: 400 });
     }
@@ -140,8 +157,11 @@ Analyze the neural effects of this browsing session. Be honest and specific.`;
     return NextResponse.json({ analysis });
   } catch (error: any) {
     console.error("Brain history analysis error:", error.message?.slice(0, 300));
+    const safeMessage = (error.message && !error.message.includes('API') && !error.message.includes('key') && !error.message.includes('token'))
+      ? error.message
+      : 'Analysis failed. Please try again.';
     return NextResponse.json(
-      { error: error.message || "Analysis failed" },
+      { error: safeMessage },
       { status: 500 }
     );
   }

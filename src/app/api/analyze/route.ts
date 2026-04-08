@@ -110,9 +110,11 @@ sadness: X
 // --- File/URL Helpers (preserved from original) ---
 
 async function fileToBase64(file: File): Promise<{ base64: string; mimeType: string }> {
+  const error = validateUploadedFile(file);
+  if (error) throw new Error(error);
   const bytes = await file.arrayBuffer();
   const base64 = Buffer.from(bytes).toString("base64");
-  return { base64, mimeType: file.type };
+  return { base64, mimeType: file.type || 'application/octet-stream' };
 }
 
 const SOCIAL_PLATFORMS = [
@@ -209,14 +211,20 @@ async function youtubeWithYtdl(url: string): Promise<{ base64: string; mimeType:
   const chunks: Buffer[] = [];
   let totalSize = 0;
   const MAX_SIZE = 15 * 1024 * 1024;
+  const timeout = setTimeout(() => stream.destroy(), 60000); // 60s timeout
 
-  for await (const chunk of stream) {
-    chunks.push(Buffer.from(chunk));
-    totalSize += chunk.length;
-    if (totalSize > MAX_SIZE) {
-      stream.destroy();
-      break;
+  try {
+    for await (const chunk of stream) {
+      chunks.push(Buffer.from(chunk));
+      totalSize += chunk.length;
+      if (totalSize > MAX_SIZE) {
+        stream.destroy();
+        break;
+      }
     }
+  } finally {
+    clearTimeout(timeout);
+    stream.destroy();
   }
 
   return {
@@ -242,7 +250,56 @@ async function youtubeThumbFallback(url: string): Promise<{ base64: string; mime
   throw new Error("Could not fetch YouTube thumbnail");
 }
 
+// --- Security: URL Validation (SSRF Prevention) ---
+
+function isPrivateUrl(url: string): boolean {
+  try {
+    const parsed = new URL(url);
+    if (!['http:', 'https:'].includes(parsed.protocol)) return true;
+    const hostname = parsed.hostname.toLowerCase();
+    // Block private/reserved IPs and hostnames
+    if (
+      hostname === 'localhost' ||
+      hostname === '127.0.0.1' ||
+      hostname === '0.0.0.0' ||
+      hostname === '::1' ||
+      hostname === '[::1]' ||
+      hostname === '169.254.169.254' ||
+      hostname.startsWith('10.') ||
+      hostname.startsWith('192.168.') ||
+      /^172\.(1[6-9]|2\d|3[01])\./.test(hostname) ||
+      hostname.endsWith('.internal') ||
+      hostname.endsWith('.local') ||
+      hostname.endsWith('.localhost')
+    ) return true;
+    return false;
+  } catch {
+    return true;
+  }
+}
+
+const ALLOWED_MIMES = new Set([
+  'image/jpeg', 'image/png', 'image/webp', 'image/gif', 'image/svg+xml',
+  'video/mp4', 'video/webm', 'video/quicktime', 'video/avi',
+  'audio/mpeg', 'audio/wav', 'audio/ogg', 'audio/webm', 'audio/mp4',
+]);
+
+const MAX_UPLOAD_SIZE = 50 * 1024 * 1024; // 50MB
+
+function validateUploadedFile(file: File): string | null {
+  if (file.size > MAX_UPLOAD_SIZE) return `File too large: ${(file.size / 1024 / 1024).toFixed(1)}MB (max 50MB)`;
+  const mime = file.type?.toLowerCase() || '';
+  if (mime && !ALLOWED_MIMES.has(mime) && !mime.startsWith('image/') && !mime.startsWith('video/') && !mime.startsWith('audio/')) {
+    return `Unsupported file type: ${mime}`;
+  }
+  return null;
+}
+
 async function urlToBase64(url: string): Promise<{ base64: string; mimeType: string }> {
+  if (isPrivateUrl(url)) {
+    throw new Error("Invalid URL. Only public HTTP/HTTPS URLs are allowed.");
+  }
+
   if (isSocialMediaUrl(url)) {
     return socialMediaToBase64(url);
   }
@@ -491,7 +548,10 @@ export async function POST(req: NextRequest) {
 
     return NextResponse.json({ comparison });
   } catch (error: any) {
-    console.error("Analysis error:", error);
-    return NextResponse.json({ error: error.message || "Analysis failed" }, { status: 500 });
+    console.error("Analysis error:", error.message?.slice(0, 500));
+    const safeMessage = (error.message && !error.message.includes('API') && !error.message.includes('key') && !error.message.includes('token'))
+      ? error.message
+      : 'Analysis failed. Please try again.';
+    return NextResponse.json({ error: safeMessage }, { status: 500 });
   }
 }
