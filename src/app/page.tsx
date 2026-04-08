@@ -220,40 +220,35 @@ export default function Home() {
 
   return (
     <div className="min-h-screen bg-[#050508] overflow-x-hidden relative">
-      {/* Ambient background — desktop only (blur is expensive on mobile) */}
+      {/* Ambient background — single subtle wash */}
       <div className="fixed inset-0 pointer-events-none z-0 hidden sm:block">
-        <div className="absolute top-0 left-1/4 w-[600px] h-[600px] bg-[#7c6cf0]/[0.03] rounded-full blur-[150px]" />
-        <div className="absolute bottom-0 right-1/4 w-[500px] h-[500px] bg-[#00e8b0]/[0.02] rounded-full blur-[150px]" />
-        <div className="absolute top-1/2 right-0 w-[400px] h-[400px] bg-[#ff6090]/[0.015] rounded-full blur-[150px]" />
+        <div className="absolute top-[-10%] left-1/4 w-[800px] h-[800px] bg-[#7c6cf0]/[0.025] rounded-full blur-[180px]" />
       </div>
 
       {/* Header */}
-      <header className="border-b border-[#1e1e30]/60 bg-[#050508]/95 sm:bg-[#050508]/80 sm:backdrop-blur-xl sticky top-0 z-50 no-select">
+      <header className="border-b border-[var(--border)] bg-[var(--bg-primary)]/95 sticky top-0 z-50 no-select">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 py-3 sm:py-3.5 flex items-center justify-between">
-          <div className="flex items-center gap-2.5 sm:gap-3.5 cursor-pointer group" onClick={reset}>
-            <div className="w-9 h-9 sm:w-10 sm:h-10 rounded-xl bg-gradient-to-br from-[#7c6cf0] to-[#00e8b0] flex items-center justify-center shadow-lg shadow-[#7c6cf0]/20 flex-shrink-0 logo-glow">
-              <svg className="w-4 h-4 sm:w-5 sm:h-5 text-white" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.5} strokeLinecap="round" strokeLinejoin="round">
+          <div className="flex items-center gap-2.5 cursor-pointer" onClick={reset}>
+            <div className="w-8 h-8 rounded-lg bg-[var(--accent)] flex items-center justify-center flex-shrink-0">
+              <svg className="w-4 h-4 text-white" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.5} strokeLinecap="round" strokeLinejoin="round">
                 <path d="M12 2C8.5 2 5 4.5 5 8c0 1.5.5 3 1.5 4C5.5 13 5 14.5 5 16c0 3.5 3.5 6 7 6s7-2.5 7-6c0-1.5-.5-3-1.5-4 1-1 1.5-2.5 1.5-4 0-3.5-3.5-6-7-6z" />
                 <path d="M12 2v20" />
                 <path d="M5 8h14" />
                 <path d="M5 16h14" />
               </svg>
             </div>
-            <div>
-              <h1 className="text-sm sm:text-base font-bold gradient-text leading-tight tracking-tight font-display">NeuroTest AI</h1>
-              <p className="text-[9px] sm:text-[10px] text-[#4a4a68] tracking-[0.15em] sm:tracking-[0.2em] uppercase font-medium hidden sm:block">Neural Intelligence Platform</p>
-            </div>
+            <span className="text-sm sm:text-base font-medium text-[var(--text-primary)] tracking-tight">NeuroTest</span>
           </div>
 
           <div className="flex items-center gap-2 sm:gap-3">
             {(state === "ab-results" || state === "profile-results") && (
-              <button onClick={reset} className="px-3 sm:px-5 py-2 sm:py-2.5 text-xs sm:text-sm bg-[#111119] border border-[#1e1e30] rounded-xl hover:bg-[#16161f] transition-all text-[#f0f0f8] font-medium active:bg-[#16161f]">
-                + New
+              <button onClick={reset} className="px-3 sm:px-4 py-1.5 sm:py-2 text-xs sm:text-sm border border-[var(--border)] rounded-lg hover:bg-[var(--bg-card-hover)] transition-colors text-[var(--text-secondary)] font-medium">
+                + New Analysis
               </button>
             )}
-            <div className="hidden md:flex items-center gap-2 px-3 py-1.5 rounded-lg bg-[#0c0c14] border border-[#1e1e30]">
-              <div className="w-1.5 h-1.5 rounded-full bg-[#00e8b0] shadow-[0_0_6px_rgba(0,232,176,0.5)]" />
-              <span className="text-[10px] text-[#7a7a98] font-medium">Multi-Agent Active</span>
+            <div className="hidden md:flex items-center gap-2 px-3 py-1.5 rounded-md bg-[var(--bg-card)] border border-[var(--border)]">
+              <div className="w-1.5 h-1.5 rounded-full bg-[var(--success)]" />
+              <span className="text-[10px] text-[var(--text-tertiary)] font-medium">5 agents online</span>
             </div>
           </div>
         </div>
@@ -262,22 +257,15 @@ export default function Home() {
       {/* ==================== HOME STATE ==================== */}
       {state === "home" && (
         <main className="relative z-10">
-          {/* Animated mesh gradient background — desktop only */}
-          <div className="fixed inset-0 pointer-events-none z-0 overflow-hidden hidden sm:block">
-            <div className="absolute top-[-20%] left-[-10%] w-[600px] h-[600px] bg-[#7c6cf0]/[0.04] rounded-full blur-[120px] blob-1" />
-            <div className="absolute bottom-[-10%] right-[-10%] w-[500px] h-[500px] bg-[#00e8b0]/[0.03] rounded-full blur-[120px] blob-2" />
-            <div className="absolute top-[40%] left-[50%] w-[400px] h-[400px] bg-[#ff6090]/[0.02] rounded-full blur-[120px] blob-3" />
-          </div>
-
-          {/* Grid BG */}
-          <div className="absolute inset-0 opacity-[0.03] pointer-events-none" style={{ backgroundImage: "linear-gradient(rgba(124,108,240,0.3) 1px, transparent 1px), linear-gradient(90deg, rgba(124,108,240,0.3) 1px, transparent 1px)", backgroundSize: "60px 60px" }} />
+          {/* Subtle grid */}
+          <div className="absolute inset-0 opacity-[0.02] pointer-events-none" style={{ backgroundImage: "linear-gradient(rgba(255,255,255,0.15) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,0.15) 1px, transparent 1px)", backgroundSize: "64px 64px" }} />
 
           {/* Hero */}
           <section className="relative max-w-7xl mx-auto px-4 md:px-6">
             <div className="text-center pt-4 pb-2">
               <div className="relative -mx-6">
                 <HeroBrain />
-                <div className="absolute inset-x-0 bottom-0 h-32 sm:h-64 bg-gradient-to-t from-[#050508] via-[#050508]/80 to-transparent" />
+                <div className="absolute inset-x-0 bottom-0 h-32 sm:h-64 bg-gradient-to-t from-[#0a0a0f] via-[#0a0a0f]/80 to-transparent" />
               </div>
               <div className="relative -mt-12 sm:-mt-36 z-10 space-y-4 sm:space-y-5 px-2 sm:px-0">
                 <h2 className="font-display text-3xl sm:text-4xl md:text-6xl lg:text-7xl font-bold leading-[1.05] tracking-[-0.03em]">
@@ -342,7 +330,7 @@ export default function Home() {
               <div className="relative glass-card rounded-3xl overflow-hidden group cursor-pointer" onClick={() => selectMode("ab-testing")}>
                 {/* Fake result preview */}
                 <div className="p-5 sm:p-8 relative">
-                  <div className="absolute inset-0 bg-gradient-to-t from-[#050508] via-transparent to-transparent z-20" />
+                  <div className="absolute inset-0 bg-gradient-to-t from-[#0a0a0f] via-transparent to-transparent z-20" />
                   <div className="filter blur-[6px] group-hover:blur-[3px] transition-all duration-700">
                     <div className="flex items-center gap-4 mb-6">
                       <div className="w-14 h-14 rounded-2xl bg-[#7c6cf0] flex items-center justify-center text-xl font-black text-white">A</div>
@@ -376,47 +364,42 @@ export default function Home() {
             </div>
           </section>
 
-          {/* Mode Selector — Bento Grid */}
-          <section id="modes" className="max-w-6xl mx-auto px-4 md:px-6 py-10 sm:py-16">
+          {/* Analysis Modes */}
+          <section id="modes" className="max-w-6xl mx-auto px-4 md:px-6 py-12 sm:py-20">
             <div className="scroll-reveal">
-              <div className="text-center mb-8 sm:mb-12">
-                <p className="text-[10px] font-bold uppercase tracking-[0.3em] mb-3 text-[#7c6cf0]">Choose Your Analysis</p>
-                <h3 className="font-display text-xl sm:text-2xl md:text-4xl font-bold text-[#f0f0f8] tracking-[-0.02em]">
-                  7 Ways to Read Your Mind
+              <div className="mb-8 sm:mb-12">
+                <h3 className="font-display text-xl sm:text-2xl md:text-3xl font-medium text-[var(--text-primary)]">
+                  Analysis modes
                 </h3>
-                <p className="text-xs sm:text-sm text-[#4a4a68] mt-2 font-medium">Each mode uses a dedicated neural analysis pipeline.</p>
+                <p className="text-sm text-[var(--text-secondary)] mt-2">Choose what you want to analyze. Each mode runs a specialized pipeline.</p>
               </div>
             </div>
 
-            {/* Bento grid — featured card large, rest in grid */}
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
               {MODES.map((m, i) => (
                 <button
                   key={m.id}
                   onClick={() => selectMode(m.id)}
-                  className={`scroll-reveal relative group text-left glass-card glass-card-hover rounded-2xl p-5 sm:p-6 transition-all duration-500 active:scale-[0.97] hover:scale-[1.02]
-                    ${i === 0 ? "sm:col-span-2 lg:col-span-2 sm:row-span-1" : ""}`}
-                  style={{ animationDelay: `${i * 60}ms` }}
+                  className={`scroll-reveal relative group text-left glass-card glass-card-hover rounded-lg p-5 sm:p-6 active:scale-[0.98]
+                    ${i === 0 ? "sm:col-span-2 lg:col-span-2" : ""}`}
+                  style={{ animationDelay: `${i * 50}ms` }}
                 >
-                  {/* Hover glow */}
-                  <div className="absolute inset-0 rounded-2xl opacity-0 group-hover:opacity-100 transition-opacity duration-700 pointer-events-none" style={{ background: `radial-gradient(circle at 50% 50%, ${m.color}08, transparent 70%)` }} />
-
                   {m.badge && (
-                    <div className="absolute -top-2.5 right-4 px-3 py-1 rounded-full text-[10px] font-bold bg-gradient-to-r from-[#7c6cf0] to-[#00e8b0] text-white shadow-lg shadow-[#7c6cf0]/20">
+                    <div className="absolute -top-2 right-4 px-2.5 py-0.5 rounded text-[10px] font-medium bg-[var(--accent)] text-white">
                       {m.badge}
                     </div>
                   )}
-                  <div className={`flex ${i === 0 ? "flex-col sm:flex-row items-start" : "items-start"} gap-4`}>
-                    <div className="w-12 h-12 rounded-xl flex items-center justify-center flex-shrink-0 border border-[#1e1e30] group-hover:border-transparent group-hover:shadow-lg transition-all duration-500 group-active:scale-90"
-                      style={{ backgroundColor: `${m.color}10` }}>
-                      <div className="w-3 h-3 rounded-full transition-all duration-500 group-hover:scale-150 group-hover:shadow-lg" style={{ backgroundColor: m.color, boxShadow: `0 0 0 0 ${m.color}` }} />
+                  <div className={`flex ${i === 0 ? "flex-col sm:flex-row items-start" : "items-start"} gap-3.5`}>
+                    <div className="w-10 h-10 rounded-md flex items-center justify-center flex-shrink-0 border border-[var(--border)]"
+                      style={{ backgroundColor: `${m.color}08` }}>
+                      <div className="w-2.5 h-2.5 rounded-full" style={{ backgroundColor: m.color }} />
                     </div>
                     <div className="flex-1 min-w-0">
-                      <h4 className={`${i === 0 ? "text-base sm:text-lg" : "text-sm"} font-bold text-[#f0f0f8] mb-1.5 group-hover:text-white transition-colors`}>{m.title}</h4>
-                      <p className={`${i === 0 ? "text-sm sm:text-sm" : "text-xs"} text-[#4a4a68] leading-relaxed ${i === 0 ? "" : "line-clamp-2"}`}>{m.desc}</p>
-                      <p className="text-[10px] font-semibold mt-2.5 flex items-center gap-1.5 transition-colors group-hover:gap-2.5" style={{ color: m.color }}>
+                      <h4 className={`${i === 0 ? "text-base" : "text-sm"} font-medium text-[var(--text-primary)] mb-1`}>{m.title}</h4>
+                      <p className={`${i === 0 ? "text-sm" : "text-xs"} text-[var(--text-secondary)] leading-relaxed ${i === 0 ? "" : "line-clamp-2"}`}>{m.desc}</p>
+                      <p className="text-[10px] font-medium mt-2 flex items-center gap-1.5 text-[var(--text-tertiary)] group-hover:text-[var(--text-secondary)] transition-colors">
                         {m.acceptText}
-                        <svg className="w-3 h-3 transition-transform duration-300 group-hover:translate-x-1.5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M9 5l7 7-7 7" /></svg>
+                        <svg className="w-3 h-3 transition-transform duration-150 group-hover:translate-x-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" /></svg>
                       </p>
                     </div>
                   </div>
@@ -425,94 +408,77 @@ export default function Home() {
             </div>
           </section>
 
-          {/* Browser Extension Promo */}
-          <section className="border-t border-[#1e1e30]/40 relative overflow-hidden">
-            <div className="absolute inset-0 bg-gradient-to-br from-[#7c6cf0]/[0.03] via-transparent to-[#00e8b0]/[0.02] pointer-events-none" />
-            <div className="max-w-5xl mx-auto px-4 md:px-6 py-10 sm:py-16 relative">
+          {/* Browser Extension */}
+          <section className="border-t border-[var(--border)]">
+            <div className="max-w-5xl mx-auto px-4 md:px-6 py-12 sm:py-20">
               <div className="scroll-reveal">
-                <div className="glass-card rounded-3xl overflow-hidden relative">
-                  {/* Background glow */}
-                  <div className="absolute top-0 right-0 w-[300px] h-[300px] bg-[#7c6cf0]/[0.06] rounded-full blur-[80px] pointer-events-none" />
-                  <div className="absolute bottom-0 left-0 w-[200px] h-[200px] bg-[#00e8b0]/[0.04] rounded-full blur-[60px] pointer-events-none" />
-
-                  <div className="p-6 sm:p-10 relative">
+                <div className="glass-card rounded-lg overflow-hidden">
+                  <div className="p-6 sm:p-10">
                     <div className="flex flex-col lg:flex-row items-center gap-8 lg:gap-12">
-                      {/* Left — text */}
                       <div className="flex-1 text-center lg:text-left space-y-4">
-                        <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-[#ff6090]/10 border border-[#ff6090]/20">
-                          <span className="text-[10px] font-bold text-[#ff6090] uppercase tracking-wider">New — Browser Extension</span>
+                        <div className="inline-flex items-center gap-2 px-2.5 py-1 rounded-md bg-[var(--accent-muted)] border border-[var(--border)]">
+                          <span className="text-[10px] font-medium text-[var(--accent)] uppercase tracking-wider">Browser Extension</span>
                         </div>
-                        <h3 className="font-display text-2xl sm:text-3xl md:text-4xl font-extrabold text-[#f0f0f8] tracking-[-0.03em] leading-tight">
-                          Your browser knows you<br />
-                          <span className="gradient-text">better than you think.</span>
+                        <h3 className="font-display text-2xl sm:text-3xl font-medium text-[var(--text-primary)] leading-tight">
+                          Real-time neural mapping<br />
+                          of your browsing behavior
                         </h3>
-                        <p className="text-sm sm:text-base text-[#7a7a98] max-w-md mx-auto lg:mx-0 leading-relaxed">
-                          Install our Chrome/Brave extension and see in real time what your browsing does to your brain.
-                          Dopamine spikes. Attention drain. Focus quality. All mapped live.
+                        <p className="text-sm text-[var(--text-secondary)] max-w-md mx-auto lg:mx-0 leading-relaxed">
+                          See what your browsing does to your brain. Dopamine patterns, attention quality, focus metrics — all tracked and mapped to neural regions in real time.
                         </p>
                         <div className="flex flex-col sm:flex-row items-center gap-3 pt-2">
-                          <a
-                            href="/install"
-                            className="relative group inline-flex w-full sm:w-auto"
-                          >
-                            <div className="absolute -inset-[1px] rounded-2xl bg-gradient-to-r from-[#7c6cf0] to-[#ff6090] opacity-50 group-hover:opacity-100 blur-sm transition-opacity duration-500" />
-                            <div className="relative px-6 sm:px-8 py-3.5 rounded-2xl bg-[#0c0c14] text-white font-bold text-sm flex items-center justify-center gap-2.5 transition-all duration-300 group-hover:bg-[#111119] group-active:scale-[0.97] w-full sm:w-auto">
-                              <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" /></svg>
-                              Install Extension
-                            </div>
+                          <a href="/install" className="w-full sm:w-auto px-6 py-3 rounded-lg bg-[var(--accent)] hover:bg-[var(--accent-hover)] text-white font-medium text-sm flex items-center justify-center gap-2.5 transition-colors">
+                            <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" /></svg>
+                            Install Extension
                           </a>
-                          <span className="text-[11px] text-[#4a4a68] font-medium">Chrome &middot; Brave &middot; Edge</span>
+                          <span className="text-[11px] text-[var(--text-tertiary)]">Chrome, Brave, Edge</span>
                         </div>
                       </div>
 
-                      {/* Right — mockup */}
-                      <div className="w-full max-w-[280px] lg:max-w-[260px] flex-shrink-0">
-                        <div className="glass-card rounded-2xl overflow-hidden border border-[#1e1e30] shadow-2xl shadow-black/40">
-                          {/* Fake extension popup preview */}
-                          <div className="bg-[#0c0c14] px-4 py-3 border-b border-[#1e1e30] flex items-center gap-2.5">
-                            <div className="w-6 h-6 rounded-md bg-gradient-to-br from-[#7c6cf0] to-[#00e8b0] flex items-center justify-center">
+                      {/* Mockup */}
+                      <div className="w-full max-w-[260px] flex-shrink-0">
+                        <div className="glass-card rounded-lg overflow-hidden">
+                          <div className="px-4 py-3 border-b border-[var(--border)] flex items-center gap-2.5">
+                            <div className="w-5 h-5 rounded bg-[var(--accent)] flex items-center justify-center">
                               <svg className="w-3 h-3 text-white" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.5} strokeLinecap="round" strokeLinejoin="round"><path d="M12 2C8.5 2 5 4.5 5 8c0 1.5.5 3 1.5 4C5.5 13 5 14.5 5 16c0 3.5 3.5 6 7 6s7-2.5 7-6c0-1.5-.5-3-1.5-4 1-1 1.5-2.5 1.5-4 0-3.5-3.5-6-7-6z" /><path d="M12 2v20" /><path d="M5 8h14" /><path d="M5 16h14" /></svg>
                             </div>
-                            <span className="text-[11px] font-bold gradient-text">NeuroTest AI</span>
+                            <span className="text-[11px] font-medium text-[var(--text-primary)]">NeuroTest</span>
                             <div className="ml-auto flex items-center gap-1.5">
-                              <div className="w-1.5 h-1.5 rounded-full bg-[#00e8b0] live-dot" />
-                              <span className="text-[9px] text-[#4a4a68]">42m</span>
+                              <div className="w-1.5 h-1.5 rounded-full bg-[var(--success)]" />
+                              <span className="text-[9px] text-[var(--text-tertiary)]">42m</span>
                             </div>
                           </div>
-                          {/* Fake stats */}
-                          <div className="p-3 space-y-2.5">
-                            <div className="grid grid-cols-3 gap-2">
+                          <div className="p-3 space-y-2">
+                            <div className="grid grid-cols-3 gap-1.5">
                               {[
                                 { v: "42m", l: "Screen Time" },
                                 { v: "8", l: "Sites" },
                                 { v: "Social", l: "Top Cat" },
                               ].map(s => (
-                                <div key={s.l} className="bg-[#050508] rounded-lg p-2 text-center border border-[#1e1e30]/50">
-                                  <div className="text-[13px] font-extrabold text-[#f0f0f8]">{s.v}</div>
-                                  <div className="text-[7px] text-[#4a4a68] uppercase tracking-wider font-semibold">{s.l}</div>
+                                <div key={s.l} className="bg-[var(--bg-primary)] rounded-md p-2 text-center border border-[var(--border)]">
+                                  <div className="text-[12px] font-medium text-[var(--text-primary)]">{s.v}</div>
+                                  <div className="text-[7px] text-[var(--text-tertiary)] uppercase tracking-wider">{s.l}</div>
                                 </div>
                               ))}
                             </div>
-                            {/* Fake neural scores */}
                             <div className="grid grid-cols-2 gap-1.5">
                               {[
-                                { n: "Dopamine", s: 7.2, c: "#ff6090" },
-                                { n: "Attention", s: 4.8, c: "#ffb020" },
-                                { n: "Learning", s: 6.1, c: "#00e8b0" },
-                                { n: "Focus", s: 5.5, c: "#7c6cf0" },
+                                { n: "Dopamine", s: 7.2 },
+                                { n: "Attention", s: 4.8 },
+                                { n: "Learning", s: 6.1 },
+                                { n: "Focus", s: 5.5 },
                               ].map(e => (
-                                <div key={e.n} className="bg-[#050508] rounded-lg p-2 border border-[#1e1e30]/50">
-                                  <div className="text-[7px] text-[#4a4a68] uppercase tracking-wider font-semibold mb-1">{e.n}</div>
-                                  <div className="text-[15px] font-extrabold" style={{ color: e.c }}>{e.s}<span className="text-[8px] text-[#4a4a68]">/10</span></div>
-                                  <div className="h-1 bg-[#111119] rounded-full mt-1.5 overflow-hidden">
-                                    <div className="h-full rounded-full" style={{ width: `${e.s * 10}%`, background: e.c }} />
+                                <div key={e.n} className="bg-[var(--bg-primary)] rounded-md p-2 border border-[var(--border)]">
+                                  <div className="text-[7px] text-[var(--text-tertiary)] uppercase tracking-wider mb-1">{e.n}</div>
+                                  <div className="text-[14px] font-medium text-[var(--accent)]">{e.s}<span className="text-[8px] text-[var(--text-tertiary)]">/10</span></div>
+                                  <div className="h-1 bg-[var(--bg-secondary)] rounded-full mt-1 overflow-hidden">
+                                    <div className="h-full rounded-full bg-[var(--accent)] opacity-60" style={{ width: `${e.s * 10}%` }} />
                                   </div>
                                 </div>
                               ))}
                             </div>
-                            {/* Fake analyze button */}
-                            <div className="bg-gradient-to-r from-[#7c6cf0] to-[#00e8b0] rounded-lg py-2 text-center">
-                              <span className="text-[10px] font-bold text-white">Analyze Brain Effects</span>
+                            <div className="bg-[var(--accent)] rounded-md py-2 text-center">
+                              <span className="text-[10px] font-medium text-white">Analyze Brain Effects</span>
                             </div>
                           </div>
                         </div>
@@ -525,142 +491,110 @@ export default function Home() {
           </section>
 
           {/* How It Works */}
-          <section className="border-t border-[#1e1e30]/40 relative">
-            <div className="absolute inset-0 bg-gradient-to-b from-[#0c0c14]/30 to-transparent pointer-events-none" />
-            <div className="max-w-5xl mx-auto px-4 md:px-6 py-10 sm:py-16 relative">
-              <div className="scroll-reveal text-center mb-8 sm:mb-12">
-                <p className="text-[10px] text-[#00e8b0] font-bold uppercase tracking-[0.3em] mb-3">How It Works</p>
-                <h3 className="font-display text-xl sm:text-2xl md:text-3xl font-bold text-[#f0f0f8] tracking-[-0.02em]">30 Seconds. Zero Signup. Full Neural Map.</h3>
+          <section className="border-t border-[var(--border)]">
+            <div className="max-w-5xl mx-auto px-4 md:px-6 py-12 sm:py-20">
+              <div className="scroll-reveal mb-8 sm:mb-12">
+                <h3 className="font-display text-xl sm:text-2xl md:text-3xl font-medium text-[var(--text-primary)]">How it works</h3>
+                <p className="text-sm text-[var(--text-secondary)] mt-2">Three steps, under 30 seconds, no account required.</p>
               </div>
 
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-4 sm:gap-6">
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-3 sm:gap-4">
                 {[
-                  { step: "01", title: "Upload Your Content", desc: "Drag and drop any file — video, image, audio — or paste a URL. Supports all major formats and platforms.", color: "#7c6cf0", emoji: "" },
-                  { step: "02", title: "Multi-Agent Analysis", desc: "Five specialized AI agents — neuroscientist, psychologist, creative director, marketer, and economist — each score your content independently.", color: "#9d8ff8", emoji: "" },
-                  { step: "03", title: "Neural Map & Insights", desc: "See exactly which brain regions activate, get a consensus score across 37 features, and receive actionable optimization recommendations.", color: "#00e8b0", emoji: "" },
+                  { step: "1", title: "Upload your content", desc: "Drag any file — video, image, audio — or paste a URL. All major formats and platforms supported." },
+                  { step: "2", title: "Multi-agent analysis", desc: "Five specialized agents — neuroscientist, psychologist, creative director, marketer, economist — each score independently." },
+                  { step: "3", title: "Get your neural map", desc: "See which brain regions activate, get consensus scores across 37 features, and receive optimization recommendations." },
                 ].map((item) => (
-                  <div key={item.step} className="scroll-reveal glass-card glass-card-hover rounded-2xl p-5 sm:p-7 group" style={{ animationDelay: `${parseInt(item.step) * 80}ms` }}>
-                    <div className="flex items-center gap-3 sm:gap-4 mb-4 sm:mb-5">
-                      <div className="w-10 h-10 sm:w-12 sm:h-12 rounded-xl flex items-center justify-center text-base sm:text-lg font-black border border-[#1e1e30] group-hover:border-transparent group-hover:scale-110 transition-all duration-500"
-                        style={{ backgroundColor: `${item.color}10`, color: item.color }}>
-                        {item.step}
-                      </div>
+                  <div key={item.step} className="scroll-reveal glass-card glass-card-hover rounded-lg p-5 sm:p-6" style={{ animationDelay: `${parseInt(item.step) * 60}ms` }}>
+                    <div className="w-8 h-8 rounded-md flex items-center justify-center text-sm font-medium mb-4 border border-[var(--border)] text-[var(--accent)] bg-[var(--accent-muted)]">
+                      {item.step}
                     </div>
-                    <h4 className="text-base font-bold text-[#f0f0f8] mb-2.5">{item.title}</h4>
-                    <p className="text-sm text-[#7a7a98] leading-relaxed">{item.desc}</p>
+                    <h4 className="text-sm font-medium text-[var(--text-primary)] mb-2">{item.title}</h4>
+                    <p className="text-sm text-[var(--text-secondary)] leading-relaxed">{item.desc}</p>
                   </div>
                 ))}
               </div>
             </div>
           </section>
 
-          {/* Agent Showcase */}
-          <section className="border-t border-[#1e1e30]/40 relative overflow-hidden">
-            <div className="absolute inset-0 bg-gradient-to-r from-[#7c6cf0]/[0.02] via-transparent to-[#00e8b0]/[0.02] pointer-events-none" />
-            <div className="max-w-5xl mx-auto px-4 md:px-6 py-10 sm:py-16 relative">
-              <div className="scroll-reveal text-center mb-8 sm:mb-12">
-                <p className="text-[10px] text-[#9d8ff8] font-bold uppercase tracking-[0.3em] mb-3">The Panel</p>
-                <h3 className="font-display text-xl sm:text-2xl md:text-3xl font-bold text-[#f0f0f8] tracking-[-0.02em]">Five Experts. One Consensus Verdict.</h3>
-                <p className="text-xs sm:text-sm text-[#4a4a68] mt-2 max-w-lg mx-auto">Each agent scores independently. We drop the highest and lowest, then average. No single AI bias can skew your results.</p>
+          {/* Agent Panel */}
+          <section className="border-t border-[var(--border)]">
+            <div className="max-w-5xl mx-auto px-4 md:px-6 py-12 sm:py-20">
+              <div className="scroll-reveal mb-8 sm:mb-12">
+                <h3 className="font-display text-xl sm:text-2xl md:text-3xl font-medium text-[var(--text-primary)]">The consensus panel</h3>
+                <p className="text-sm text-[var(--text-secondary)] mt-2 max-w-lg">Each agent scores independently. Trimmed-mean aggregation drops the highest and lowest — no single model bias can skew results.</p>
               </div>
 
-              <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3 sm:gap-4">
+              <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3">
                 {[
-                  { name: "Neuromarketing Scientist", focus: "Brain activation & fMRI patterns", color: "#7c6cf0" },
-                  { name: "Consumer Psychologist", focus: "Cialdini's principles & cognitive biases", color: "#9d8ff8" },
-                  { name: "Creative Director", focus: "Production quality & storytelling", color: "#d0ccf0" },
-                  { name: "Performance Marketer", focus: "CTR signals & conversion optimization", color: "#00e8b0" },
-                  { name: "Behavioral Economist", focus: "Loss aversion, anchoring & persuasion", color: "#00c49a" },
+                  { name: "Neuromarketing Scientist", focus: "Brain activation & fMRI patterns" },
+                  { name: "Consumer Psychologist", focus: "Cognitive biases & persuasion" },
+                  { name: "Creative Director", focus: "Production quality & storytelling" },
+                  { name: "Performance Marketer", focus: "CTR signals & conversion" },
+                  { name: "Behavioral Economist", focus: "Loss aversion & anchoring" },
                 ].map((agent, i) => (
-                  <div key={agent.name} className="scroll-reveal glass-card rounded-xl sm:rounded-2xl p-4 sm:p-5 text-center group hover:border-[rgba(124,108,240,0.15)] transition-all duration-500 hover:translate-y-[-2px] active:scale-[0.97]" style={{ animationDelay: `${i * 60}ms` }}>
-                    <div className="w-10 h-10 sm:w-12 sm:h-12 rounded-full mx-auto mb-2.5 sm:mb-3 flex items-center justify-center border-2 transition-all duration-500 group-hover:scale-110" style={{ borderColor: `${agent.color}30`, backgroundColor: `${agent.color}08` }}>
-                      <div className="w-2 h-2 sm:w-2.5 sm:h-2.5 rounded-full transition-all duration-500 group-hover:shadow-lg" style={{ backgroundColor: agent.color, boxShadow: `0 0 0 0 ${agent.color}` }} />
+                  <div key={agent.name} className="scroll-reveal glass-card glass-card-hover rounded-lg p-4 sm:p-5 text-center" style={{ animationDelay: `${i * 50}ms` }}>
+                    <div className="w-9 h-9 rounded-full mx-auto mb-2.5 flex items-center justify-center border border-[var(--border)] bg-[var(--accent-muted)]">
+                      <div className="w-2 h-2 rounded-full bg-[var(--accent)]" />
                     </div>
-                    <h4 className="text-[11px] sm:text-xs font-bold text-[#f0f0f8] mb-1.5 leading-tight">{agent.name}</h4>
-                    <p className="text-[10px] text-[#4a4a68] leading-relaxed">{agent.focus}</p>
+                    <h4 className="text-[11px] sm:text-xs font-medium text-[var(--text-primary)] mb-1 leading-tight">{agent.name}</h4>
+                    <p className="text-[10px] text-[var(--text-tertiary)] leading-relaxed">{agent.focus}</p>
                   </div>
                 ))}
               </div>
             </div>
           </section>
 
-          {/* Final CTA — curiosity gap */}
-          <section className="border-t border-[#1e1e30]/40 relative overflow-hidden">
-            <div className="max-w-3xl mx-auto px-4 md:px-6 py-14 sm:py-20 text-center relative">
+          {/* CTA */}
+          <section className="border-t border-[var(--border)]">
+            <div className="max-w-3xl mx-auto px-4 md:px-6 py-16 sm:py-24 text-center">
               <div className="scroll-reveal">
-                {/* Animated background glow */}
-                <div className="absolute inset-0 items-center justify-center pointer-events-none hidden sm:flex">
-                  <div className="w-[400px] h-[400px] rounded-full bg-[#7c6cf0]/[0.06] blur-[100px] blob-1" />
-                </div>
-
-                <h3 className="font-display text-2xl sm:text-3xl md:text-5xl font-bold text-[#f0f0f8] tracking-[-0.03em] mb-4 relative">
-                  Your brain is already deciding.
-                  <br />
-                  <span className="gradient-text">Let us show you how.</span>
+                <h3 className="font-display text-2xl sm:text-3xl md:text-4xl font-medium text-[var(--text-primary)] tracking-tight mb-4">
+                  Ready to see what your brain thinks?
                 </h3>
-                <p className="text-sm sm:text-base text-[#7a7a98] mb-8 max-w-md mx-auto">
+                <p className="text-sm text-[var(--text-secondary)] mb-8 max-w-md mx-auto">
                   Free. No account needed. Results in under 30 seconds.
                 </p>
                 <button
                   onClick={() => selectMode("ab-testing")}
-                  className="px-10 sm:px-14 py-4 sm:py-5 rounded-xl bg-[#7c6cf0] hover:bg-[#8d7ff8] text-white font-semibold text-base sm:text-lg flex items-center gap-3 transition-all duration-200 active:scale-[0.97]"
+                  className="px-8 sm:px-10 py-3.5 sm:py-4 rounded-lg bg-[var(--accent)] hover:bg-[var(--accent-hover)] text-white font-medium text-sm sm:text-base inline-flex items-center gap-2.5 transition-colors"
                 >
-                  <svg className="w-5 h-5 sm:w-6 sm:h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z" /></svg>
                   Start Neural Scan
+                  <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M14 5l7 7m0 0l-7 7m7-7H3" /></svg>
                 </button>
               </div>
             </div>
           </section>
 
-          {/* Trust Strip */}
-          <section className="border-t border-[#1e1e30]/40 bg-[#0c0c14]/30">
-            <div className="max-w-5xl mx-auto px-4 md:px-6 py-8 sm:py-12">
-              <div className="scroll-reveal text-center mb-6">
-                <p className="text-[10px] text-[#4a4a68] font-bold uppercase tracking-[0.3em]">Built With</p>
-              </div>
-              <div className="flex flex-wrap justify-center items-center gap-6 sm:gap-10 opacity-40">
-                {[
-                  { name: "Groq", desc: "Inference" },
-                  { name: "Cerebras", desc: "Fallback AI" },
-                  { name: "Llama 4", desc: "Vision Model" },
-                  { name: "Next.js", desc: "Framework" },
-                  { name: "Three.js", desc: "3D Brain" },
-                ].map(tech => (
-                  <div key={tech.name} className="text-center group hover:opacity-100 transition-opacity">
-                    <p className="text-sm sm:text-base font-bold text-[#f0f0f8] tracking-tight">{tech.name}</p>
-                    <p className="text-[9px] text-[#4a4a68] uppercase tracking-wider">{tech.desc}</p>
-                  </div>
+          {/* Built with */}
+          <section className="border-t border-[var(--border)]">
+            <div className="max-w-5xl mx-auto px-4 md:px-6 py-8 sm:py-10">
+              <div className="flex flex-wrap justify-center items-center gap-x-8 sm:gap-x-12 gap-y-3 text-[var(--text-tertiary)]">
+                {["Groq", "Cerebras", "Llama 4", "Next.js", "Three.js"].map(name => (
+                  <span key={name} className="text-xs font-medium">{name}</span>
                 ))}
               </div>
             </div>
           </section>
 
           {/* Footer */}
-          <section className="border-t border-[#1e1e30]/40">
-            <div className="max-w-5xl mx-auto px-4 md:px-6 py-8 sm:py-10">
-              <div className="flex flex-col sm:flex-row items-center justify-between gap-6">
-                <div className="flex items-center gap-3">
-                  <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-[#7c6cf0] to-[#00e8b0] flex items-center justify-center">
-                    <svg className="w-4 h-4 text-white" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.5} strokeLinecap="round" strokeLinejoin="round">
+          <section className="border-t border-[var(--border)]">
+            <div className="max-w-5xl mx-auto px-4 md:px-6 py-8">
+              <div className="flex flex-col sm:flex-row items-center justify-between gap-4">
+                <div className="flex items-center gap-2">
+                  <div className="w-6 h-6 rounded bg-[var(--accent)] flex items-center justify-center">
+                    <svg className="w-3 h-3 text-white" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.5} strokeLinecap="round" strokeLinejoin="round">
                       <path d="M12 2C8.5 2 5 4.5 5 8c0 1.5.5 3 1.5 4C5.5 13 5 14.5 5 16c0 3.5 3.5 6 7 6s7-2.5 7-6c0-1.5-.5-3-1.5-4 1-1 1.5-2.5 1.5-4 0-3.5-3.5-6-7-6z" />
                       <path d="M12 2v20" /><path d="M5 8h14" /><path d="M5 16h14" />
                     </svg>
                   </div>
-                  <div>
-                    <p className="text-sm font-bold gradient-text">NeuroTest AI</p>
-                    <p className="text-[9px] text-[#4a4a68] uppercase tracking-wider">Neural Intelligence Platform</p>
-                  </div>
+                  <span className="text-xs text-[var(--text-tertiary)]">&copy; 2026 NeuroTest</span>
                 </div>
-                <div className="flex flex-wrap justify-center items-center gap-x-6 gap-y-2 text-[11px] text-[#4a4a68] font-medium">
-                  <a href="/install" className="hover:text-[#7a7a98] transition-colors">Extension</a>
-                  <a href="/privacy" className="hover:text-[#7a7a98] transition-colors">Privacy</a>
-                  <span>5-Agent Consensus</span>
-                  <span>Zero Data Stored</span>
-                  <span>100% Free</span>
+                <div className="flex items-center gap-x-5 text-xs text-[var(--text-tertiary)]">
+                  <a href="/install" className="hover:text-[var(--text-secondary)] transition-colors">Extension</a>
+                  <a href="/privacy" className="hover:text-[var(--text-secondary)] transition-colors">Privacy</a>
+                  <span>Zero data stored</span>
                 </div>
               </div>
-              <div className="divider-gradient mt-6 mb-4" />
-              <p className="text-center text-[10px] text-[#2d2d50] font-medium">&copy; 2026 NeuroTest AI. Built for the curious mind.</p>
             </div>
           </section>
         </main>
