@@ -1123,8 +1123,9 @@ export default function Home() {
           )}
 
           <div className="divider-gradient mt-8" />
-          <div className="text-center py-6">
+          <div className="text-center py-6 space-y-2">
             <p className="text-[11px] text-[#4a4a68] font-medium">Multi-agent consensus AI — 5 expert agents, trimmed-mean aggregation</p>
+            <p className="text-[10px] text-[#2d2d50] max-w-lg mx-auto leading-relaxed">Results are AI-generated predictions based on neuromarketing research patterns. Accuracy improves as our models learn from more analyses. Early results may vary from real-world performance — use as directional guidance alongside your own testing.</p>
           </div>
         </main>
       )}
@@ -1309,8 +1310,9 @@ export default function Home() {
           )}
 
           <div className="divider-gradient mt-8" />
-          <div className="text-center py-6">
+          <div className="text-center py-6 space-y-2">
             <p className="text-[11px] text-[#4a4a68] font-medium">Neural profile powered by multi-agent consensus AI</p>
+            <p className="text-[10px] text-[#2d2d50] max-w-lg mx-auto leading-relaxed">Results are AI-generated predictions based on neuromarketing research patterns. Accuracy improves as our models learn from more analyses. Early results may vary from real-world performance — use as directional guidance alongside your own testing.</p>
           </div>
         </main>
       )}

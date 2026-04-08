@@ -100,6 +100,8 @@ Be honest about risks while acknowledging positive usage patterns.`,
 
 const SCORING_INSTRUCTIONS = `
 
+ACCURACY PROTOCOL: Cross-reference every insight against at least 2 observable data points. If a pattern isn't clearly supported by the evidence, score conservatively (4-5). Do NOT inflate scores or fabricate patterns. Your credibility depends on precision — a well-calibrated 5.5 is more valuable than an impressive but wrong 8.0.
+
 Now rate each dimension from 0-10 (most should fall 3-7, 8+ is rare):
 emotional_intensity: X
 urgency: X
@@ -269,10 +271,17 @@ export async function POST(request: NextRequest) {
           type: "image_url",
           image_url: { url: `data:${mime};base64,${base64}` },
         });
-      } else if (mime.startsWith("audio/") || mime.startsWith("video/")) {
+      } else if (mime.startsWith("video/")) {
+        // Videos: send as image_url (Llama 4 Scout supports video)
         contentParts.push({
           type: "image_url",
           image_url: { url: `data:${mime};base64,${base64}` },
+        });
+      } else if (mime.startsWith("audio/")) {
+        // Audio: can't send as image — describe it for text-only analysis
+        contentParts.push({
+          type: "text",
+          text: `AUDIO FILE UPLOADED: "${file.name}" (${mime}, ${Math.round(file.size / 1024)}KB). Please analyze this audio content based on the filename, format, and any metadata context. For music analysis, infer genre, mood, and tempo from the title and context provided.`,
         });
       } else {
         // Text-based file (JSON, CSV, etc.)
@@ -315,7 +324,7 @@ export async function POST(request: NextRequest) {
     ];
 
     // Call AI
-    const requiresVision = file?.type?.startsWith("image/") || file?.type?.startsWith("video/");
+    const requiresVision = file?.type?.startsWith("image/") || file?.type?.startsWith("video/") || false;
     const analysisText = await callWithFallback({
       messages,
       temperature: 0.3,
