@@ -319,14 +319,17 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "Invalid analysis mode" }, { status: 400 });
     }
     const file = formData.get("file") as File | null;
-    const text = formData.get("text") as string | null;
-    const url = formData.get("url") as string | null;
+    const rawText = formData.get("text") as string | null;
+    const rawUrl = formData.get("url") as string | null;
+    // Normalize: treat empty strings as null
+    const text = rawText && rawText.trim() ? rawText.trim() : null;
+    const url = rawUrl && rawUrl.trim() ? rawUrl.trim() : null;
 
     if (!file && !text && !url) {
       return NextResponse.json({ error: "No content provided" }, { status: 400 });
     }
 
-    // Validate input matches the selected mode
+    // Strict per-mode input validation — reject mismatched inputs immediately
     const validationError = validateModeInput(mode, file, text, url);
     if (validationError) {
       return NextResponse.json({ error: validationError }, { status: 400 });

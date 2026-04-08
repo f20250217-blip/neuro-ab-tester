@@ -141,8 +141,40 @@ export default function Home() {
 
   const hasA = fileA || urlA;
   const hasB = fileB || urlB;
-  const hasProfile = profileFile || profileText.trim() || profileUrl.trim();
   const currentMode = MODES.find((m) => m.id === mode) || MODES[0];
+
+  // Strict per-mode input validation
+  const MUSIC_DOMAINS = ["youtube.com", "youtu.be", "music.youtube.com", "spotify.com", "open.spotify.com", "soundcloud.com", "music.apple.com", "tidal.com", "deezer.com", "audiomack.com", "bandcamp.com"];
+  const SOCIAL_DOMAINS = ["instagram.com", "twitter.com", "x.com", "facebook.com", "tiktok.com", "linkedin.com", "reddit.com", "threads.net", "pinterest.com"];
+
+  const hasProfile = (() => {
+    const hasFile = !!profileFile;
+    const hasText = !!profileText.trim();
+    const hasUrl = !!profileUrl.trim();
+    if (!hasFile && !hasText && !hasUrl) return false;
+
+    switch (mode) {
+      case "photo":
+        return hasFile && (!profileFile || profileFile.type.startsWith("image/"));
+      case "music": {
+        if (hasFile) return profileFile!.type.startsWith("audio/") || profileFile!.type.startsWith("video/");
+        if (hasUrl) return MUSIC_DOMAINS.some(d => profileUrl.toLowerCase().includes(d));
+        return false;
+      }
+      case "browsing":
+        return hasFile ? !profileFile!.type.startsWith("image/") : hasText;
+      case "social": {
+        if (hasUrl) return SOCIAL_DOMAINS.some(d => profileUrl.toLowerCase().includes(d));
+        return hasFile || hasText;
+      }
+      case "text":
+        return hasFile ? !(profileFile!.type.startsWith("image/") || profileFile!.type.startsWith("audio/") || profileFile!.type.startsWith("video/")) : hasText;
+      case "screen-time":
+        return hasFile || hasText;
+      default:
+        return hasFile || hasText || hasUrl;
+    }
+  })();
 
   const selectMode = (m: AnalysisMode) => {
     setMode(m);
@@ -878,6 +910,27 @@ export default function Home() {
               </div>
             )}
           </div>
+
+          {/* Validation hint */}
+          {!hasProfile && (profileFile || profileText.trim() || profileUrl.trim()) && (
+            <div className="text-center mb-2">
+              <p className="text-sm text-[#ff6060] font-medium">
+                {mode === "music" && profileUrl.trim() && !MUSIC_DOMAINS.some(d => profileUrl.toLowerCase().includes(d))
+                  ? "Please paste a valid music URL (YouTube, Spotify, SoundCloud, Apple Music)"
+                  : mode === "music" && profileFile && !profileFile.type.startsWith("audio/") && !profileFile.type.startsWith("video/")
+                  ? "Music mode requires audio or video files"
+                  : mode === "photo" && profileFile && !profileFile.type.startsWith("image/")
+                  ? "Photo mode requires image files (JPG, PNG, WebP)"
+                  : mode === "social" && profileUrl.trim() && !SOCIAL_DOMAINS.some(d => profileUrl.toLowerCase().includes(d))
+                  ? "Please paste a valid social media URL (Instagram, Twitter/X, TikTok, etc.)"
+                  : mode === "text" && profileFile && (profileFile.type.startsWith("image/") || profileFile.type.startsWith("audio/") || profileFile.type.startsWith("video/"))
+                  ? "Text mode requires text files or pasted text — not media files"
+                  : mode === "browsing" && profileFile && profileFile.type.startsWith("image/")
+                  ? "Browsing mode requires data files (JSON, CSV, TXT) or pasted text"
+                  : "Input doesn't match this analysis mode"}
+              </p>
+            </div>
+          )}
 
           {/* CTA */}
           <div className="flex justify-center mt-10">
