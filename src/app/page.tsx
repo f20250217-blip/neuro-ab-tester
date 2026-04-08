@@ -904,6 +904,12 @@ export default function Home() {
             </div>
           </div>
 
+          {/* Neuro Cards — shareable */}
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+            <NeuroCard analysis={result.contentA} color="#7c6cf0" mode="A/B Test" />
+            <NeuroCard analysis={result.contentB} color="#00e8b0" mode="A/B Test" />
+          </div>
+
           {/* Tab Nav */}
           <div className="flex gap-1 bg-[#0c0c14] rounded-2xl p-1.5 border border-[#1e1e30] tab-scroll no-select">
             {[
@@ -1150,6 +1156,9 @@ export default function Home() {
             </div>
           </div>
 
+          {/* Neuro Card — shareable identity artifact */}
+          <NeuroCard analysis={profileResult} color={currentMode.color} mode={currentMode.shortTitle} />
+
           {/* Tabs */}
           <div className="flex gap-1 bg-[#0c0c14] rounded-2xl p-1.5 border border-[#1e1e30] tab-scroll no-select">
             {[
@@ -1384,6 +1393,90 @@ function DetailPanel({ analysis, color }: { analysis: NeuralAnalysis; color: str
               <p className="text-lg font-bold font-mono tabular-nums" style={{ color }}>{(value * 100).toFixed(0)}%</p>
             </div>
           ))}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function getNeuroArchetype(a: NeuralAnalysis): { name: string; icon: string; desc: string; gradient: string } {
+  const scores = [
+    { key: "emotional", v: a.emotionalImpact },
+    { key: "memory", v: a.memoryRetention },
+    { key: "decision", v: a.decisionTrigger },
+    { key: "attention", v: a.attentionCapture },
+    { key: "trust", v: a.trustBuilding },
+  ].sort((x, y) => y.v - x.v);
+  const top = scores[0].key;
+  const second = scores[1].key;
+
+  if (top === "emotional" && second === "trust") return { name: "The Empath", icon: "heart", desc: "Builds deep emotional connections through authentic trust signals", gradient: "from-[#e8457a] to-[#7c6cf0]" };
+  if (top === "emotional") return { name: "The Catalyst", icon: "zap", desc: "Ignites powerful emotional responses that drive action", gradient: "from-[#e8457a] to-[#ffb020]" };
+  if (top === "memory") return { name: "The Architect", icon: "layers", desc: "Creates lasting neural imprints that stick in memory", gradient: "from-[#7c6cf0] to-[#00e8b0]" };
+  if (top === "decision") return { name: "The Closer", icon: "target", desc: "Engineered to trigger decisive action at the right moment", gradient: "from-[#00e8b0] to-[#ffb020]" };
+  if (top === "attention") return { name: "The Magnet", icon: "eye", desc: "Captures and holds attention in a world of distractions", gradient: "from-[#ffb020] to-[#e8457a]" };
+  if (top === "trust") return { name: "The Oracle", icon: "shield", desc: "Commands authority and builds unshakeable credibility", gradient: "from-[#00e8b0] to-[#7c6cf0]" };
+  return { name: "The Strategist", icon: "brain", desc: "Balanced neural profile with no single weakness", gradient: "from-[#7c6cf0] to-[#00e8b0]" };
+}
+
+function NeuroCard({ analysis, color, mode }: { analysis: NeuralAnalysis; color: string; mode: string }) {
+  const arch = getNeuroArchetype(analysis);
+  const topRegions = [...analysis.regions].sort((a, b) => b.activation - a.activation).slice(0, 3);
+
+  return (
+    <div className="relative overflow-hidden rounded-2xl border border-[#1e1e30]" style={{ background: "linear-gradient(135deg, #0c0c14 0%, #0a0a12 100%)" }}>
+      {/* Ambient glow */}
+      <div className="absolute top-0 right-0 w-48 h-48 rounded-full blur-[80px] opacity-20" style={{ background: color }} />
+      <div className="absolute bottom-0 left-0 w-32 h-32 rounded-full blur-[60px] opacity-10" style={{ background: color }} />
+
+      <div className="relative p-6 sm:p-8">
+        {/* Top row: branding + score */}
+        <div className="flex items-center justify-between mb-6">
+          <div className="flex items-center gap-2">
+            <svg className="w-4 h-4 text-[#7c6cf0]" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round">
+              <path d="M2 12h4l3-7 3.5 14 3-12 2.5 5H22" />
+            </svg>
+            <span className="text-[10px] font-bold text-[#4a4a68] uppercase tracking-[0.2em]">NeuroTest</span>
+          </div>
+          <div className="flex items-baseline gap-1">
+            <span className="text-3xl font-black tabular-nums" style={{ color }}>{analysis.overallScore}</span>
+            <span className="text-xs text-[#4a4a68] font-medium">/10</span>
+          </div>
+        </div>
+
+        {/* Archetype */}
+        <div className="mb-6">
+          <h3 className={`text-2xl sm:text-3xl font-black bg-gradient-to-r ${arch.gradient} bg-clip-text text-transparent`}>{arch.name}</h3>
+          <p className="text-xs text-[#7a7a98] mt-1.5 max-w-xs">{arch.desc}</p>
+        </div>
+
+        {/* 3 key metrics */}
+        <div className="grid grid-cols-3 gap-3 mb-6">
+          {[
+            { label: "Emotion", value: analysis.emotionalImpact },
+            { label: "Memory", value: analysis.memoryRetention },
+            { label: "Action", value: analysis.decisionTrigger },
+          ].map((m) => (
+            <div key={m.label} className="text-center">
+              <div className="text-lg font-black tabular-nums text-[#f0f0f8]">{m.value.toFixed(1)}</div>
+              <div className="text-[9px] text-[#4a4a68] font-semibold uppercase tracking-wider mt-0.5">{m.label}</div>
+            </div>
+          ))}
+        </div>
+
+        {/* Top brain regions */}
+        <div className="flex flex-wrap gap-1.5 mb-5">
+          {topRegions.map((r) => (
+            <span key={r.id} className="px-2.5 py-1 rounded-lg text-[9px] font-semibold border border-[#1e1e30] bg-[#050508]/60" style={{ color: r.color }}>
+              {r.name} {(r.activation * 100).toFixed(0)}%
+            </span>
+          ))}
+        </div>
+
+        {/* Footer */}
+        <div className="flex items-center justify-between pt-4 border-t border-[#1e1e30]/40">
+          <span className="text-[9px] text-[#2d2d50] font-medium">neurotest.live</span>
+          <span className="text-[9px] text-[#2d2d50] font-medium">{mode} analysis</span>
         </div>
       </div>
     </div>
