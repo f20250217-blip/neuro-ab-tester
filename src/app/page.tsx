@@ -7,8 +7,25 @@ import ScoreBar from "@/components/ScoreBar";
 import RegionTable from "@/components/RegionTable";
 import { ComparisonResult, NeuralAnalysis } from "@/lib/neuro-engine";
 
-const Brain3D = dynamic(() => import("@/components/Brain3D"), { ssr: false });
-const HeroBrain = dynamic(() => import("@/components/Brain3D").then((m) => ({ default: m.HeroBrain })), { ssr: false });
+const Brain3D = dynamic(() => import("@/components/Brain3D"), {
+  ssr: false,
+  loading: () => (
+    <div className="w-full h-full flex items-center justify-center">
+      <div className="w-24 h-24 rounded-full border border-[#1e1e30] bg-[#0c0c14] animate-pulse" />
+    </div>
+  ),
+});
+const HeroBrain = dynamic(() => import("@/components/Brain3D").then((m) => ({ default: m.HeroBrain })), {
+  ssr: false,
+  loading: () => (
+    <div className="w-full h-[380px] sm:h-[420px] md:h-[550px] flex items-center justify-center">
+      <div className="relative">
+        <div className="w-32 h-32 sm:w-40 sm:h-40 rounded-full bg-gradient-to-br from-[#7c6cf0]/20 to-[#00e8b0]/10 animate-pulse" />
+        <div className="absolute inset-0 rounded-full bg-[#7c6cf0]/5 blur-2xl" />
+      </div>
+    </div>
+  ),
+});
 
 type AppState = "home" | "ab-upload" | "profile-upload" | "processing" | "ab-results" | "profile-results";
 type AnalysisMode = "ab-testing" | "photo" | "music" | "browsing" | "social" | "text" | "screen-time";
@@ -220,9 +237,11 @@ export default function Home() {
 
   return (
     <div className="min-h-screen bg-[#050508] overflow-x-hidden relative">
-      {/* Ambient background — single subtle wash */}
-      <div className="fixed inset-0 pointer-events-none z-0 hidden sm:block">
-        <div className="absolute top-[-10%] left-1/4 w-[800px] h-[800px] bg-[#7c6cf0]/[0.025] rounded-full blur-[180px]" />
+      {/* Animated mesh gradient background — desktop only */}
+      <div className="fixed inset-0 pointer-events-none z-0 overflow-hidden hidden sm:block">
+        <div className="absolute top-[-20%] left-[-10%] w-[600px] h-[600px] bg-[#7c6cf0]/[0.04] rounded-full blur-[120px] blob-1" />
+        <div className="absolute bottom-[-10%] right-[-10%] w-[500px] h-[500px] bg-[#00e8b0]/[0.03] rounded-full blur-[120px] blob-2" />
+        <div className="absolute top-[40%] left-[50%] w-[400px] h-[400px] bg-[#ff6090]/[0.02] rounded-full blur-[120px] blob-3" />
       </div>
 
       {/* Header */}
@@ -246,9 +265,9 @@ export default function Home() {
                 + New Analysis
               </button>
             )}
-            <div className="hidden md:flex items-center gap-2 px-3 py-1.5 rounded-md bg-[var(--bg-card)] border border-[var(--border)]">
-              <div className="w-1.5 h-1.5 rounded-full bg-[var(--success)]" />
-              <span className="text-[10px] text-[var(--text-tertiary)] font-medium">5 agents online</span>
+            <div className="hidden md:flex items-center gap-2 px-3 py-1.5 rounded-lg bg-[#0c0c14] border border-[#1e1e30]">
+              <div className="w-1.5 h-1.5 rounded-full bg-[#00e8b0] shadow-[0_0_6px_rgba(0,232,176,0.5)]" />
+              <span className="text-[10px] text-[#7a7a98] font-medium">Multi-Agent Active</span>
             </div>
           </div>
         </div>
@@ -257,19 +276,19 @@ export default function Home() {
       {/* ==================== HOME STATE ==================== */}
       {state === "home" && (
         <main className="relative z-10">
-          {/* Subtle grid */}
-          <div className="absolute inset-0 opacity-[0.02] pointer-events-none" style={{ backgroundImage: "linear-gradient(rgba(255,255,255,0.15) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,0.15) 1px, transparent 1px)", backgroundSize: "64px 64px" }} />
+          {/* Grid BG */}
+          <div className="absolute inset-0 opacity-[0.03] pointer-events-none" style={{ backgroundImage: "linear-gradient(rgba(124,108,240,0.3) 1px, transparent 1px), linear-gradient(90deg, rgba(124,108,240,0.3) 1px, transparent 1px)", backgroundSize: "60px 60px" }} />
 
           {/* Hero */}
           <section className="relative max-w-7xl mx-auto px-4 md:px-6">
             <div className="text-center pt-4 pb-2">
               <div className="relative -mx-6">
                 <HeroBrain />
-                <div className="absolute inset-x-0 bottom-0 h-32 sm:h-64 bg-gradient-to-t from-[#0a0a0f] via-[#0a0a0f]/80 to-transparent" />
+                <div className="absolute inset-x-0 bottom-0 h-32 sm:h-64 bg-gradient-to-t from-[#050508] via-[#050508]/80 to-transparent" />
               </div>
               <div className="relative -mt-12 sm:-mt-36 z-10 space-y-4 sm:space-y-5 px-2 sm:px-0">
                 <h2 className="font-display text-3xl sm:text-4xl md:text-6xl lg:text-7xl font-bold leading-[1.05] tracking-[-0.03em]">
-                  <span className="gradient-text">Your Brain on Screen</span>
+                  <span className="gradient-text-shimmer">Your Brain on Screen</span>
                   <br />
                   <span className="text-[#f0f0f8]">Decoded in Seconds</span>
                 </h2>
@@ -367,22 +386,23 @@ export default function Home() {
           {/* Analysis Modes */}
           <section id="modes" className="max-w-6xl mx-auto px-4 md:px-6 py-12 sm:py-20">
             <div className="scroll-reveal">
-              <div className="mb-8 sm:mb-12">
-                <h3 className="font-display text-xl sm:text-2xl md:text-3xl font-medium text-[var(--text-primary)]">
-                  Analysis modes
+              <div className="text-center mb-8 sm:mb-12">
+                <p className="text-[10px] font-bold uppercase tracking-[0.3em] mb-3 text-[#7c6cf0]">Choose Your Analysis</p>
+                <h3 className="font-display text-xl sm:text-2xl md:text-4xl font-bold text-[#f0f0f8] tracking-[-0.02em]">
+                  7 Ways to Read Your Mind
                 </h3>
-                <p className="text-sm text-[var(--text-secondary)] mt-2">Choose what you want to analyze. Each mode runs a specialized pipeline.</p>
+                <p className="text-xs sm:text-sm text-[#4a4a68] mt-2 font-medium">Each mode uses a dedicated neural analysis pipeline.</p>
               </div>
             </div>
 
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-4">
               {MODES.map((m, i) => (
                 <button
                   key={m.id}
                   onClick={() => selectMode(m.id)}
-                  className={`scroll-reveal relative group text-left glass-card glass-card-hover rounded-lg p-5 sm:p-6 active:scale-[0.98]
+                  className={`scroll-reveal relative group text-left glass-card glass-card-hover rounded-2xl p-5 sm:p-6 transition-all duration-500 active:scale-[0.97] hover:scale-[1.02]
                     ${i === 0 ? "sm:col-span-2 lg:col-span-2" : ""}`}
-                  style={{ animationDelay: `${i * 50}ms` }}
+                  style={{ animationDelay: `${i * 60}ms` }}
                 >
                   {m.badge && (
                     <div className="absolute -top-2 right-4 px-2.5 py-0.5 rounded text-[10px] font-medium bg-[var(--accent)] text-white">

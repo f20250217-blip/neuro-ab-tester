@@ -2,7 +2,7 @@
 
 import { useRef, useMemo, useState, useEffect } from "react";
 import { Canvas, useFrame, useThree } from "@react-three/fiber";
-import { OrbitControls, Float, useGLTF } from "@react-three/drei";
+import { OrbitControls, useGLTF } from "@react-three/drei";
 import * as THREE from "three";
 import { BrainRegion } from "@/lib/neuro-engine";
 
@@ -420,12 +420,10 @@ export default function Brain3D({ regions, className = "", autoRotate = true, sh
             <ambientLight intensity={0.2} />
             <directionalLight position={[3, 6, 4]} intensity={0.9} color="#ffffff" />
             <directionalLight position={[-3, 3, -2]} intensity={0.3} color="#8888ff" />
-            <Float speed={0.5} rotationIntensity={0.02} floatIntensity={0.06}>
-              <BrainMesh regions={regions} autoRotate={autoRotate} isMobile={false} />
-              <NeuralPathways regions={regions} />
-              <FlowingParticles regions={regions} />
-              <RegionNodes regions={regions} />
-            </Float>
+            <BrainMesh regions={regions} autoRotate={autoRotate} isMobile={false} />
+            <NeuralPathways regions={regions} />
+            <FlowingParticles regions={regions} />
+            <RegionNodes regions={regions} />
             {showParticles && <Particles />}
             <OrbitControls
               enableZoom
