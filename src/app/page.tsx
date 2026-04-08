@@ -252,11 +252,8 @@ export default function Home() {
         <div className="max-w-7xl mx-auto px-4 sm:px-6 py-3 sm:py-3.5 flex items-center justify-between">
           <div className="flex items-center gap-2.5 cursor-pointer" onClick={reset}>
             <div className="w-8 h-8 rounded-lg bg-[var(--accent)] flex items-center justify-center flex-shrink-0">
-              <svg className="w-4 h-4 text-white" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.5} strokeLinecap="round" strokeLinejoin="round">
-                <path d="M12 2C8.5 2 5 4.5 5 8c0 1.5.5 3 1.5 4C5.5 13 5 14.5 5 16c0 3.5 3.5 6 7 6s7-2.5 7-6c0-1.5-.5-3-1.5-4 1-1 1.5-2.5 1.5-4 0-3.5-3.5-6-7-6z" />
-                <path d="M12 2v20" />
-                <path d="M5 8h14" />
-                <path d="M5 16h14" />
+              <svg className="w-4 h-4 text-white" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round">
+                <path d="M2 12h4l3-7 3.5 14 3-12 2.5 5H22" />
               </svg>
             </div>
             <span className="text-sm sm:text-base font-medium text-[var(--text-primary)] tracking-tight">NeuroTest</span>
@@ -456,7 +453,7 @@ export default function Home() {
                         <div className="glass-card rounded-lg overflow-hidden">
                           <div className="px-4 py-3 border-b border-[var(--border)] flex items-center gap-2.5">
                             <div className="w-5 h-5 rounded bg-[var(--accent)] flex items-center justify-center">
-                              <svg className="w-3 h-3 text-white" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.5} strokeLinecap="round" strokeLinejoin="round"><path d="M12 2C8.5 2 5 4.5 5 8c0 1.5.5 3 1.5 4C5.5 13 5 14.5 5 16c0 3.5 3.5 6 7 6s7-2.5 7-6c0-1.5-.5-3-1.5-4 1-1 1.5-2.5 1.5-4 0-3.5-3.5-6-7-6z" /><path d="M12 2v20" /><path d="M5 8h14" /><path d="M5 16h14" /></svg>
+                              <svg className="w-3 h-3 text-white" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round"><path d="M2 12h4l3-7 3.5 14 3-12 2.5 5H22" /></svg>
                             </div>
                             <span className="text-[11px] font-medium text-[var(--text-primary)]">NeuroTest</span>
                             <div className="ml-auto flex items-center gap-1.5">
@@ -615,9 +612,8 @@ export default function Home() {
               <div className="flex flex-col sm:flex-row items-center justify-between gap-4">
                 <div className="flex items-center gap-2">
                   <div className="w-6 h-6 rounded bg-[var(--accent)] flex items-center justify-center">
-                    <svg className="w-3 h-3 text-white" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.5} strokeLinecap="round" strokeLinejoin="round">
-                      <path d="M12 2C8.5 2 5 4.5 5 8c0 1.5.5 3 1.5 4C5.5 13 5 14.5 5 16c0 3.5 3.5 6 7 6s7-2.5 7-6c0-1.5-.5-3-1.5-4 1-1 1.5-2.5 1.5-4 0-3.5-3.5-6-7-6z" />
-                      <path d="M12 2v20" /><path d="M5 8h14" /><path d="M5 16h14" />
+                    <svg className="w-3 h-3 text-white" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round">
+                      <path d="M2 12h4l3-7 3.5 14 3-12 2.5 5H22" />
                     </svg>
                   </div>
                   <span className="text-xs text-[var(--text-tertiary)]">&copy; 2026 NeuroTest</span>
