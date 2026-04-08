@@ -101,7 +101,7 @@ export default function ShareCard({ analysis, mode, color }: ShareCardProps) {
   const [copied, setCopied] = useState(false);
   const [generating, setGenerating] = useState(false);
   const [revealed, setRevealed] = useState(false);
-  const [shareFailed, setShareFailed] = useState(false);
+  const [storySaved, setStorySaved] = useState(false);
   const [isMobile, setIsMobile] = useState(false);
 
   // Detect mobile once on mount — no re-renders
@@ -230,6 +230,7 @@ export default function ShareCard({ analysis, mode, color }: ShareCardProps) {
     link.download = `neurotest-story-${arch.name.toLowerCase().replace(/\s/g, "-")}-${score}.png`;
     link.href = dataUrl;
     link.click();
+    setStorySaved(true);
   }, [captureStory, arch.name, score]);
 
   /* ── Platform share handlers (text only — instant) ── */
@@ -257,25 +258,6 @@ export default function ShareCard({ analysis, mode, color }: ShareCardProps) {
     setCopied(true);
     setTimeout(() => setCopied(false), 2500);
   }, [copyText]);
-
-  /* ── Native share (mobile) — text + link, instant ── */
-
-  const handleNativeShare = useCallback(async () => {
-    if (navigator.share) {
-      try {
-        await navigator.share({
-          title: `${arch.name} \u2014 ${score}/100`,
-          text: nativeShareText,
-          url: "https://neurotest.live",
-        });
-      } catch (e: unknown) {
-        if (e instanceof Error && e.name === "AbortError") return;
-        setShareFailed(true);
-      }
-    } else {
-      handleWhatsApp();
-    }
-  }, [arch.name, score, nativeShareText, handleWhatsApp]);
 
   /* ── Score ring math ── */
 
@@ -438,113 +420,128 @@ export default function ShareCard({ analysis, mode, color }: ShareCardProps) {
          ════════════════════════════════════════════════════ */}
 
       {/* ── Competition hook ── */}
-      <div className="mt-6 mb-4 text-center">
+      <div className="mt-6 mb-5 text-center">
         <p className="text-[15px] text-[#7a7a98] font-medium">
           <span className="text-[#f0f0f8] font-semibold">{"\uD83D\uDD25"} Think your friends can beat {score}/100?</span>
         </p>
       </div>
 
-      {/* ── Primary: native share on mobile, Twitter on desktop ── */}
-      {isMobile && (
-        <button
-          onClick={handleNativeShare}
-          className="w-full py-4 rounded-2xl text-white text-[15px] font-bold flex items-center justify-center gap-2.5 active:scale-[0.97] mb-3"
-          style={{
-            background: `linear-gradient(135deg, ${arch.glowA}, ${arch.glowB})`,
-            boxShadow: `0 4px 25px ${arch.glowA}33, 0 2px 10px ${arch.glowB}22`,
-            WebkitTapHighlightColor: "transparent",
-            touchAction: "manipulation",
-          }}
-        >
-          <svg className="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round"><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><line x1="8.59" y1="13.51" x2="15.42" y2="17.49"/><line x1="15.41" y1="6.51" x2="8.59" y2="10.49"/></svg>
-          Share Your Brain Score
-        </button>
-      )}
-
-      {/* ── Share failed fallback ── */}
-      {shareFailed && (
-        <div className="mb-3 p-3 rounded-xl bg-[#0c0c14] border border-[#ffb020]/20 flex items-center justify-between gap-3">
-          <span className="text-[11px] text-[#ffb020]">Share unavailable — use buttons below</span>
+      {/* ══════════════════════════════════════════════
+         SECTION 1: POST TO STORY (image)
+         ══════════════════════════════════════════════ */}
+      <div className="mb-5">
+        <div className="flex items-center gap-2 mb-2.5">
+          <div className="w-1 h-4 rounded-full" style={{ background: `linear-gradient(180deg, ${arch.glowA}, ${arch.glowB})` }} />
+          <span className="text-[11px] font-bold text-[#7a7a98] uppercase tracking-[0.12em]">Post as Image</span>
+          <span className="text-[10px] text-[#4a4a68]">— Instagram, WhatsApp Status, Stories</span>
         </div>
-      )}
 
-      {/* ── 4 share buttons — ALWAYS visible on all devices ── */}
-      <div className="grid grid-cols-4 gap-2 mb-3">
-        {/* WhatsApp */}
-        <button
-          onClick={handleWhatsApp}
-          className="flex flex-col items-center gap-1.5 py-3 rounded-xl bg-[#0c0c14] border border-[#1e1e30] active:border-[#25D366]/50 text-[10px] font-semibold active:scale-[0.95]"
-          style={{ WebkitTapHighlightColor: "transparent", touchAction: "manipulation", minHeight: "60px" }}
-        >
-          <svg className="w-5 h-5" viewBox="0 0 24 24" fill="#25D366"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413z" /></svg>
-          <span className="text-[#25D366]">WhatsApp</span>
-        </button>
+        <div className="grid grid-cols-2 gap-2">
+          {/* Post to Story — 9:16 */}
+          <button
+            onClick={handleDownloadStory}
+            disabled={generating}
+            className="flex items-center justify-center gap-2 py-3.5 rounded-xl border active:scale-[0.97] disabled:opacity-50"
+            style={{
+              background: `linear-gradient(135deg, ${arch.glowA}15, ${arch.glowB}10)`,
+              border: `1px solid ${arch.glowA}30`,
+              WebkitTapHighlightColor: "transparent",
+              touchAction: "manipulation",
+            }}
+          >
+            {generating ? (
+              <svg className="w-4 h-4 animate-spin" style={{ color: arch.glowA }} viewBox="0 0 24 24" fill="none"><circle cx="12" cy="12" r="10" stroke="currentColor" strokeWidth={2} className="opacity-25" /><path d="M4 12a8 8 0 018-8" stroke="currentColor" strokeWidth={2} className="opacity-75" /></svg>
+            ) : (
+              <svg className="w-4 h-4" style={{ color: arch.glowA }} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round"><rect x="6" y="2" width="12" height="20" rx="2"/><path d="M12 18h.01" /></svg>
+            )}
+            <div className="text-left">
+              <div className="text-[12px] font-bold text-[#f0f0f8]">Save for Story</div>
+              <div className="text-[9px] text-[#4a4a68]">9:16 format</div>
+            </div>
+          </button>
 
-        {/* Twitter / X */}
-        <button
-          onClick={handleTwitter}
-          className="flex flex-col items-center gap-1.5 py-3 rounded-xl bg-[#0c0c14] border border-[#1e1e30] active:border-[#7c6cf0]/50 text-[10px] font-semibold active:scale-[0.95]"
-          style={{ WebkitTapHighlightColor: "transparent", touchAction: "manipulation", minHeight: "60px" }}
-        >
-          <svg className="w-5 h-5 text-[#f0f0f8]" viewBox="0 0 24 24" fill="currentColor"><path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z" /></svg>
-          <span className="text-[#7a7a98]">Twitter/X</span>
-        </button>
+          {/* Save card image — square-ish */}
+          <button
+            onClick={handleDownload}
+            disabled={generating}
+            className="flex items-center justify-center gap-2 py-3.5 rounded-xl bg-[#0c0c14] border border-[#1e1e30] active:border-[#7c6cf0]/40 active:scale-[0.97] disabled:opacity-50"
+            style={{ WebkitTapHighlightColor: "transparent", touchAction: "manipulation" }}
+          >
+            {generating ? (
+              <svg className="w-4 h-4 text-[#7c6cf0] animate-spin" viewBox="0 0 24 24" fill="none"><circle cx="12" cy="12" r="10" stroke="currentColor" strokeWidth={2} className="opacity-25" /><path d="M4 12a8 8 0 018-8" stroke="currentColor" strokeWidth={2} className="opacity-75" /></svg>
+            ) : (
+              <svg className="w-4 h-4 text-[#7c6cf0]" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4M7 10l5 5 5-5M12 15V3" /></svg>
+            )}
+            <div className="text-left">
+              <div className="text-[12px] font-bold text-[#f0f0f8]">Save Image</div>
+              <div className="text-[9px] text-[#4a4a68]">For feed posts</div>
+            </div>
+          </button>
+        </div>
 
-        {/* Download Image */}
-        <button
-          onClick={handleDownload}
-          disabled={generating}
-          className="flex flex-col items-center gap-1.5 py-3 rounded-xl bg-[#0c0c14] border border-[#1e1e30] active:border-[#7c6cf0]/50 text-[10px] font-semibold active:scale-[0.95] disabled:opacity-50"
-          style={{ WebkitTapHighlightColor: "transparent", touchAction: "manipulation", minHeight: "60px" }}
-        >
-          {generating ? (
-            <svg className="w-5 h-5 text-[#7c6cf0] animate-spin" viewBox="0 0 24 24" fill="none"><circle cx="12" cy="12" r="10" stroke="currentColor" strokeWidth={2} className="opacity-25" /><path d="M4 12a8 8 0 018-8" stroke="currentColor" strokeWidth={2} className="opacity-75" /></svg>
-          ) : (
-            <svg className="w-5 h-5 text-[#7c6cf0]" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4M7 10l5 5 5-5M12 15V3" /></svg>
-          )}
-          <span className="text-[#7a7a98]">Save</span>
-        </button>
-
-        {/* Copy Link */}
-        <button
-          onClick={handleCopyLink}
-          className="flex flex-col items-center gap-1.5 py-3 rounded-xl bg-[#0c0c14] border border-[#1e1e30] active:border-[#00e8b0]/50 text-[10px] font-semibold active:scale-[0.95]"
-          style={{ WebkitTapHighlightColor: "transparent", touchAction: "manipulation", minHeight: "60px" }}
-        >
-          {copied ? (
-            <>
-              <svg className="w-5 h-5 text-[#00e8b0]" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round"><path d="M20 6L9 17l-5-5" /></svg>
-              <span className="text-[#00e8b0]">Copied!</span>
-            </>
-          ) : (
-            <>
-              <svg className="w-5 h-5 text-[#7a7a98]" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"/><path d="M5 15H4a2 2 0 01-2-2V4a2 2 0 012-2h9a2 2 0 012 2v1" /></svg>
-              <span className="text-[#7a7a98]">Copy</span>
-            </>
-          )}
-        </button>
+        {/* ── Story saved confirmation ── */}
+        {storySaved && (
+          <div className="mt-2.5 px-4 py-3 rounded-xl bg-[#00e8b0]/8 border border-[#00e8b0]/20 flex items-start gap-2.5">
+            <svg className="w-4 h-4 text-[#00e8b0] flex-shrink-0 mt-0.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round"><path d="M20 6L9 17l-5-5" /></svg>
+            <div>
+              <p className="text-[12px] font-semibold text-[#00e8b0]">Image saved to your device!</p>
+              <p className="text-[11px] text-[#7a7a98] mt-0.5">Open <strong className="text-[#f0f0f8]">WhatsApp {"\u2192"} Status</strong> or <strong className="text-[#f0f0f8]">Instagram {"\u2192"} Story</strong> and upload it</p>
+            </div>
+          </div>
+        )}
       </div>
 
-      {/* ── Story format download (9:16 for IG Stories / WA Status) ── */}
-      <button
-        onClick={handleDownloadStory}
-        disabled={generating}
-        className="w-full py-3 rounded-xl bg-[#0c0c14] border border-[#1e1e30] active:border-[#7c6cf0]/40 flex items-center justify-center gap-2 active:scale-[0.98] disabled:opacity-50 mb-3"
-        style={{ WebkitTapHighlightColor: "transparent", touchAction: "manipulation" }}
-      >
-        {generating ? (
-          <svg className="w-4 h-4 text-[#7c6cf0] animate-spin" viewBox="0 0 24 24" fill="none"><circle cx="12" cy="12" r="10" stroke="currentColor" strokeWidth={2} className="opacity-25" /><path d="M4 12a8 8 0 018-8" stroke="currentColor" strokeWidth={2} className="opacity-75" /></svg>
-        ) : (
-          <svg className="w-4 h-4 text-[#7c6cf0]" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round"><rect x="6" y="2" width="12" height="20" rx="2"/><path d="M12 18h.01" /></svg>
-        )}
-        <span className="text-[12px] font-semibold text-[#7a7a98]">Save for Stories</span>
-        <span className="text-[10px] text-[#4a4a68]">(9:16)</span>
-      </button>
+      {/* ══════════════════════════════════════════════
+         SECTION 2: SHARE LINK (text)
+         ══════════════════════════════════════════════ */}
+      <div>
+        <div className="flex items-center gap-2 mb-2.5">
+          <div className="w-1 h-4 rounded-full bg-[#4a4a68]" />
+          <span className="text-[11px] font-bold text-[#7a7a98] uppercase tracking-[0.12em]">Share as Text</span>
+          <span className="text-[10px] text-[#4a4a68]">— Chat, DMs, Twitter</span>
+        </div>
 
-      {/* ── UX hint ── */}
-      <p className="text-center text-[11px] text-[#4a4a68]">
-        {"\uD83D\uDCF7"} Best shared as image on Instagram &amp; WhatsApp Status
-      </p>
+        <div className="grid grid-cols-3 gap-2">
+          {/* WhatsApp */}
+          <button
+            onClick={handleWhatsApp}
+            className="flex flex-col items-center gap-1.5 py-3 rounded-xl bg-[#0c0c14] border border-[#1e1e30] active:border-[#25D366]/50 active:scale-[0.95]"
+            style={{ WebkitTapHighlightColor: "transparent", touchAction: "manipulation", minHeight: "60px" }}
+          >
+            <svg className="w-5 h-5" viewBox="0 0 24 24" fill="#25D366"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413z" /></svg>
+            <span className="text-[10px] font-semibold text-[#25D366]">WhatsApp</span>
+          </button>
+
+          {/* Twitter / X */}
+          <button
+            onClick={handleTwitter}
+            className="flex flex-col items-center gap-1.5 py-3 rounded-xl bg-[#0c0c14] border border-[#1e1e30] active:border-[#7c6cf0]/50 active:scale-[0.95]"
+            style={{ WebkitTapHighlightColor: "transparent", touchAction: "manipulation", minHeight: "60px" }}
+          >
+            <svg className="w-5 h-5 text-[#f0f0f8]" viewBox="0 0 24 24" fill="currentColor"><path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z" /></svg>
+            <span className="text-[10px] font-semibold text-[#7a7a98]">Twitter/X</span>
+          </button>
+
+          {/* Copy Link */}
+          <button
+            onClick={handleCopyLink}
+            className="flex flex-col items-center gap-1.5 py-3 rounded-xl bg-[#0c0c14] border border-[#1e1e30] active:border-[#00e8b0]/50 active:scale-[0.95]"
+            style={{ WebkitTapHighlightColor: "transparent", touchAction: "manipulation", minHeight: "60px" }}
+          >
+            {copied ? (
+              <>
+                <svg className="w-5 h-5 text-[#00e8b0]" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round"><path d="M20 6L9 17l-5-5" /></svg>
+                <span className="text-[10px] font-semibold text-[#00e8b0]">Copied!</span>
+              </>
+            ) : (
+              <>
+                <svg className="w-5 h-5 text-[#7a7a98]" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"/><path d="M5 15H4a2 2 0 01-2-2V4a2 2 0 012-2h9a2 2 0 012 2v1" /></svg>
+                <span className="text-[10px] font-semibold text-[#7a7a98]">Copy Link</span>
+              </>
+            )}
+          </button>
+        </div>
+      </div>
     </div>
   );
 }
