@@ -127,14 +127,14 @@ export default function ShareCard({ analysis, mode, color }: ShareCardProps) {
     { label: "Focus", value: analysis.attentionCapture, emoji: "\uD83D\uDC41\uFE0F" },
   ];
 
-  /* ── Share text (pre-computed, zero cost) ── */
+  /* ── Share text — emotional, competitive, includes brain type ── */
 
-  const shareTextShort = `I scored ${score}/100 on NeuroTest AI (${rank.label}). My archetype: ${arch.name} ${arch.emoji}. Decode yours:`;
-  const twitterText = `My brain archetype: ${arch.name} ${arch.emoji}\nNeural score: ${score}/100 (${rank.label})\n\n"${insight.slice(0, 120)}${insight.length > 120 ? "..." : ""}"\n\nDecode yours free \u2192 neurotest.live`;
-  const whatsAppText = `I just decoded my brain using AI \uD83E\uDDE0\n\nMy score: ${score}/100 \u2014 ${rank.label}\nArchetype: ${arch.name} ${arch.emoji}\n\n"${insight}"\n\nCan you beat my score? Try free: https://neurotest.live`;
-  const copyText = `I scored ${score}/100 on NeuroTest AI (${rank.label}). Decode your brain free: https://neurotest.live`;
+  const twitterText = `My brain type: ${arch.name} ${arch.emoji}\nScore: ${score}/100 (${rank.label})\n\n"${insight.slice(0, 100)}..."\n\nThink you can beat me? \uD83D\uDC47\nneurotest.live`;
+  const whatsAppText = `I just got my brain decoded by AI and I'm ${arch.name} ${arch.emoji}\n\nScore: ${score}/100 \u2014 ${rank.label}\n\n"${insight}"\n\nBet you can't beat my score \uD83D\uDE0F\nTry free: https://neurotest.live`;
+  const copyText = `I'm "${arch.name}" ${arch.emoji} with a ${score}/100 brain score (${rank.label}). Think you can beat me? Try free: https://neurotest.live`;
+  const nativeShareText = `I'm "${arch.name}" ${arch.emoji} \u2014 ${score}/100 brain score. Bet you can't beat me \uD83D\uDE0F`;
 
-  /* ── Image capture (lazy — only when user explicitly requests) ── */
+  /* ── Image capture — card format (square-ish, for feed posts) ── */
 
   const captureCard = useCallback(async (): Promise<string | null> => {
     if (!cardRef.current) return null;
@@ -153,6 +153,67 @@ export default function ShareCard({ analysis, mode, color }: ShareCardProps) {
     }
   }, []);
 
+  /* ── Image capture — story format (9:16 ratio for IG/WA Status) ── */
+
+  const captureStory = useCallback(async (): Promise<string | null> => {
+    if (!cardRef.current) return null;
+    setGenerating(true);
+    try {
+      const cardEl = cardRef.current;
+      const cardRect = cardEl.getBoundingClientRect();
+      const cardWidth = cardRect.width;
+
+      // Create a 9:16 wrapper, place card centered vertically
+      const wrapper = document.createElement("div");
+      wrapper.style.cssText = `
+        width: ${cardWidth}px;
+        height: ${cardWidth * (16 / 9)}px;
+        background: linear-gradient(180deg, #050508 0%, #0a0a14 50%, #050508 100%);
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        padding: 24px;
+        position: fixed;
+        top: -9999px;
+        left: -9999px;
+      `;
+
+      // Clone card into wrapper
+      const clone = cardEl.cloneNode(true) as HTMLElement;
+      clone.style.width = `${cardWidth - 48}px`;
+      clone.style.maxWidth = "100%";
+      wrapper.appendChild(clone);
+
+      // Add CTA text below card
+      const cta = document.createElement("div");
+      cta.style.cssText = `
+        text-align: center;
+        margin-top: 20px;
+        font-family: Inter, system-ui, sans-serif;
+      `;
+      cta.innerHTML = `<div style="color: #7a7a98; font-size: 13px; font-weight: 600;">Decode your brain free</div><div style="color: #7c6cf0; font-size: 15px; font-weight: 800; margin-top: 4px;">neurotest.live</div>`;
+      wrapper.appendChild(cta);
+
+      document.body.appendChild(wrapper);
+
+      const dataUrl = await toPng(wrapper, {
+        pixelRatio: 2,
+        cacheBust: true,
+        backgroundColor: "#050508",
+      });
+
+      document.body.removeChild(wrapper);
+      return dataUrl;
+    } catch {
+      return null;
+    } finally {
+      setGenerating(false);
+    }
+  }, []);
+
+  /* ── Download handlers ── */
+
   const handleDownload = useCallback(async () => {
     const dataUrl = await captureCard();
     if (!dataUrl) return;
@@ -162,7 +223,16 @@ export default function ShareCard({ analysis, mode, color }: ShareCardProps) {
     link.click();
   }, [captureCard, arch.name, score]);
 
-  /* ── Platform share handlers ── */
+  const handleDownloadStory = useCallback(async () => {
+    const dataUrl = await captureStory();
+    if (!dataUrl) return;
+    const link = document.createElement("a");
+    link.download = `neurotest-story-${arch.name.toLowerCase().replace(/\s/g, "-")}-${score}.png`;
+    link.href = dataUrl;
+    link.click();
+  }, [captureStory, arch.name, score]);
+
+  /* ── Platform share handlers (text only — instant) ── */
 
   const handleTwitter = useCallback(() => {
     window.open(`https://twitter.com/intent/tweet?text=${encodeURIComponent(twitterText)}`, "_blank", "noopener,noreferrer");
@@ -176,11 +246,9 @@ export default function ShareCard({ analysis, mode, color }: ShareCardProps) {
     try {
       await navigator.clipboard.writeText(copyText);
     } catch {
-      // Fallback for older mobile browsers
       const ta = document.createElement("textarea");
       ta.value = copyText;
-      ta.style.position = "fixed";
-      ta.style.opacity = "0";
+      ta.style.cssText = "position:fixed;opacity:0";
       document.body.appendChild(ta);
       ta.select();
       document.execCommand("copy");
@@ -190,36 +258,24 @@ export default function ShareCard({ analysis, mode, color }: ShareCardProps) {
     setTimeout(() => setCopied(false), 2500);
   }, [copyText]);
 
-  /* ── Primary share — INSTANT on mobile, no image generation ── */
+  /* ── Native share (mobile) — text + link, instant ── */
 
-  const handleShare = useCallback(async () => {
-    // Mobile with Web Share API: instant text + link share
-    if (isMobile && navigator.share) {
+  const handleNativeShare = useCallback(async () => {
+    if (navigator.share) {
       try {
         await navigator.share({
-          title: `My Brain: ${arch.name} (${score}/100)`,
-          text: shareTextShort,
+          title: `${arch.name} \u2014 ${score}/100`,
+          text: nativeShareText,
           url: "https://neurotest.live",
         });
-        return;
       } catch (e: unknown) {
-        // AbortError = user cancelled, not a failure
         if (e instanceof Error && e.name === "AbortError") return;
-        // Actual failure — show fallback buttons
         setShareFailed(true);
-        return;
       }
+    } else {
+      handleWhatsApp();
     }
-
-    // Desktop: no native share, open Twitter as default
-    if (!isMobile) {
-      handleTwitter();
-      return;
-    }
-
-    // Mobile without Web Share API (rare): WhatsApp as primary
-    handleWhatsApp();
-  }, [isMobile, arch.name, score, shareTextShort, handleTwitter, handleWhatsApp]);
+  }, [arch.name, score, nativeShareText, handleWhatsApp]);
 
   /* ── Score ring math ── */
 
@@ -383,76 +439,77 @@ export default function ShareCard({ analysis, mode, color }: ShareCardProps) {
 
       {/* ── Competition hook ── */}
       <div className="mt-6 mb-4 text-center">
-        <p className="text-sm text-[#7a7a98] font-medium">
-          <span className="text-[#f0f0f8]">{"\uD83D\uDD01"} Challenge your friends</span> — can they beat {score}/100?
+        <p className="text-[15px] text-[#7a7a98] font-medium">
+          <span className="text-[#f0f0f8] font-semibold">{"\uD83D\uDD25"} Think your friends can beat {score}/100?</span>
         </p>
       </div>
 
-      {/* ── Primary share button — instant, no image gen ── */}
-      <button
-        onClick={handleShare}
-        className="w-full py-4 rounded-2xl text-white text-base font-bold flex items-center justify-center gap-2.5 active:scale-[0.97] mb-3"
-        style={{
-          background: `linear-gradient(135deg, ${arch.glowA}, ${arch.glowB})`,
-          boxShadow: `0 4px 25px ${arch.glowA}33, 0 2px 10px ${arch.glowB}22`,
-          WebkitTapHighlightColor: "transparent",
-          touchAction: "manipulation",
-        }}
-      >
-        <svg className="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round"><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><line x1="8.59" y1="13.51" x2="15.42" y2="17.49"/><line x1="15.41" y1="6.51" x2="8.59" y2="10.49"/></svg>
-        Share Your Brain Score
-      </button>
+      {/* ── Primary: native share on mobile, Twitter on desktop ── */}
+      {isMobile && (
+        <button
+          onClick={handleNativeShare}
+          className="w-full py-4 rounded-2xl text-white text-[15px] font-bold flex items-center justify-center gap-2.5 active:scale-[0.97] mb-3"
+          style={{
+            background: `linear-gradient(135deg, ${arch.glowA}, ${arch.glowB})`,
+            boxShadow: `0 4px 25px ${arch.glowA}33, 0 2px 10px ${arch.glowB}22`,
+            WebkitTapHighlightColor: "transparent",
+            touchAction: "manipulation",
+          }}
+        >
+          <svg className="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round"><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><line x1="8.59" y1="13.51" x2="15.42" y2="17.49"/><line x1="15.41" y1="6.51" x2="8.59" y2="10.49"/></svg>
+          Share Your Brain Score
+        </button>
+      )}
 
-      {/* ── Share failed fallback (only shows on error) ── */}
+      {/* ── Share failed fallback ── */}
       {shareFailed && (
         <div className="mb-3 p-3 rounded-xl bg-[#0c0c14] border border-[#ffb020]/20 flex items-center justify-between gap-3">
-          <span className="text-[11px] text-[#ffb020]">Sharing unavailable — use these instead:</span>
-          <div className="flex gap-2">
-            <button
-              onClick={handleWhatsApp}
-              className="px-3 py-1.5 rounded-lg bg-[#25D366]/10 border border-[#25D366]/20 text-[#25D366] text-[10px] font-bold active:scale-[0.95]"
-              style={{ WebkitTapHighlightColor: "transparent", touchAction: "manipulation" }}
-            >
-              WhatsApp
-            </button>
-            <button
-              onClick={handleCopyLink}
-              className="px-3 py-1.5 rounded-lg bg-[#7c6cf0]/10 border border-[#7c6cf0]/20 text-[#7c6cf0] text-[10px] font-bold active:scale-[0.95]"
-              style={{ WebkitTapHighlightColor: "transparent", touchAction: "manipulation" }}
-            >
-              {copied ? "Copied!" : "Copy Link"}
-            </button>
-          </div>
+          <span className="text-[11px] text-[#ffb020]">Share unavailable — use buttons below</span>
         </div>
       )}
 
-      {/* ── Secondary actions — mobile: 3 cols (no save), desktop: 4 cols ── */}
-      <div className={`grid gap-2 ${isMobile ? "grid-cols-3" : "grid-cols-4"}`}>
-        {/* WhatsApp — first on mobile (most used in India) */}
+      {/* ── 4 share buttons — ALWAYS visible on all devices ── */}
+      <div className="grid grid-cols-4 gap-2 mb-3">
+        {/* WhatsApp */}
         <button
           onClick={handleWhatsApp}
-          className="flex flex-col items-center gap-1.5 py-3 rounded-xl bg-[#0c0c14] border border-[#1e1e30] hover:border-[#25D366]/30 active:border-[#25D366]/50 text-[#7a7a98] text-[10px] font-semibold active:scale-[0.95]"
-          style={{ WebkitTapHighlightColor: "transparent", touchAction: "manipulation", minHeight: "56px" }}
+          className="flex flex-col items-center gap-1.5 py-3 rounded-xl bg-[#0c0c14] border border-[#1e1e30] active:border-[#25D366]/50 text-[10px] font-semibold active:scale-[0.95]"
+          style={{ WebkitTapHighlightColor: "transparent", touchAction: "manipulation", minHeight: "60px" }}
         >
           <svg className="w-5 h-5" viewBox="0 0 24 24" fill="#25D366"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413z" /></svg>
-          WhatsApp
+          <span className="text-[#25D366]">WhatsApp</span>
         </button>
 
         {/* Twitter / X */}
         <button
           onClick={handleTwitter}
-          className="flex flex-col items-center gap-1.5 py-3 rounded-xl bg-[#0c0c14] border border-[#1e1e30] hover:border-[#7c6cf0]/30 active:border-[#7c6cf0]/50 text-[#7a7a98] text-[10px] font-semibold active:scale-[0.95]"
-          style={{ WebkitTapHighlightColor: "transparent", touchAction: "manipulation", minHeight: "56px" }}
+          className="flex flex-col items-center gap-1.5 py-3 rounded-xl bg-[#0c0c14] border border-[#1e1e30] active:border-[#7c6cf0]/50 text-[10px] font-semibold active:scale-[0.95]"
+          style={{ WebkitTapHighlightColor: "transparent", touchAction: "manipulation", minHeight: "60px" }}
         >
-          <svg className="w-5 h-5" viewBox="0 0 24 24" fill="currentColor"><path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z" /></svg>
-          Post
+          <svg className="w-5 h-5 text-[#f0f0f8]" viewBox="0 0 24 24" fill="currentColor"><path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z" /></svg>
+          <span className="text-[#7a7a98]">Twitter/X</span>
         </button>
 
-        {/* Copy */}
+        {/* Download Image */}
+        <button
+          onClick={handleDownload}
+          disabled={generating}
+          className="flex flex-col items-center gap-1.5 py-3 rounded-xl bg-[#0c0c14] border border-[#1e1e30] active:border-[#7c6cf0]/50 text-[10px] font-semibold active:scale-[0.95] disabled:opacity-50"
+          style={{ WebkitTapHighlightColor: "transparent", touchAction: "manipulation", minHeight: "60px" }}
+        >
+          {generating ? (
+            <svg className="w-5 h-5 text-[#7c6cf0] animate-spin" viewBox="0 0 24 24" fill="none"><circle cx="12" cy="12" r="10" stroke="currentColor" strokeWidth={2} className="opacity-25" /><path d="M4 12a8 8 0 018-8" stroke="currentColor" strokeWidth={2} className="opacity-75" /></svg>
+          ) : (
+            <svg className="w-5 h-5 text-[#7c6cf0]" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4M7 10l5 5 5-5M12 15V3" /></svg>
+          )}
+          <span className="text-[#7a7a98]">Save</span>
+        </button>
+
+        {/* Copy Link */}
         <button
           onClick={handleCopyLink}
-          className="flex flex-col items-center gap-1.5 py-3 rounded-xl bg-[#0c0c14] border border-[#1e1e30] hover:border-[#4a4a68]/40 active:border-[#00e8b0]/40 text-[#7a7a98] text-[10px] font-semibold active:scale-[0.95]"
-          style={{ WebkitTapHighlightColor: "transparent", touchAction: "manipulation", minHeight: "56px" }}
+          className="flex flex-col items-center gap-1.5 py-3 rounded-xl bg-[#0c0c14] border border-[#1e1e30] active:border-[#00e8b0]/50 text-[10px] font-semibold active:scale-[0.95]"
+          style={{ WebkitTapHighlightColor: "transparent", touchAction: "manipulation", minHeight: "60px" }}
         >
           {copied ? (
             <>
@@ -461,29 +518,33 @@ export default function ShareCard({ analysis, mode, color }: ShareCardProps) {
             </>
           ) : (
             <>
-              <svg className="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"/><path d="M5 15H4a2 2 0 01-2-2V4a2 2 0 012-2h9a2 2 0 012 2v1" /></svg>
-              Copy
+              <svg className="w-5 h-5 text-[#7a7a98]" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"/><path d="M5 15H4a2 2 0 01-2-2V4a2 2 0 012-2h9a2 2 0 012 2v1" /></svg>
+              <span className="text-[#7a7a98]">Copy</span>
             </>
           )}
         </button>
-
-        {/* Save Image — desktop only (hidden on mobile to reduce clutter) */}
-        {!isMobile && (
-          <button
-            onClick={handleDownload}
-            disabled={generating}
-            className="flex flex-col items-center gap-1.5 py-3 rounded-xl bg-[#0c0c14] border border-[#1e1e30] hover:border-[#7c6cf0]/30 text-[#7a7a98] text-[10px] font-semibold transition-all active:scale-[0.95] disabled:opacity-50"
-            style={{ minHeight: "56px" }}
-          >
-            {generating ? (
-              <svg className="w-5 h-5 animate-spin" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2}><circle cx="12" cy="12" r="10" className="opacity-25" /><path d="M4 12a8 8 0 018-8" className="opacity-75" /></svg>
-            ) : (
-              <svg className="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4M7 10l5 5 5-5M12 15V3" /></svg>
-            )}
-            Save
-          </button>
-        )}
       </div>
+
+      {/* ── Story format download (9:16 for IG Stories / WA Status) ── */}
+      <button
+        onClick={handleDownloadStory}
+        disabled={generating}
+        className="w-full py-3 rounded-xl bg-[#0c0c14] border border-[#1e1e30] active:border-[#7c6cf0]/40 flex items-center justify-center gap-2 active:scale-[0.98] disabled:opacity-50 mb-3"
+        style={{ WebkitTapHighlightColor: "transparent", touchAction: "manipulation" }}
+      >
+        {generating ? (
+          <svg className="w-4 h-4 text-[#7c6cf0] animate-spin" viewBox="0 0 24 24" fill="none"><circle cx="12" cy="12" r="10" stroke="currentColor" strokeWidth={2} className="opacity-25" /><path d="M4 12a8 8 0 018-8" stroke="currentColor" strokeWidth={2} className="opacity-75" /></svg>
+        ) : (
+          <svg className="w-4 h-4 text-[#7c6cf0]" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round"><rect x="6" y="2" width="12" height="20" rx="2"/><path d="M12 18h.01" /></svg>
+        )}
+        <span className="text-[12px] font-semibold text-[#7a7a98]">Save for Stories</span>
+        <span className="text-[10px] text-[#4a4a68]">(9:16)</span>
+      </button>
+
+      {/* ── UX hint ── */}
+      <p className="text-center text-[11px] text-[#4a4a68]">
+        {"\uD83D\uDCF7"} Best shared as image on Instagram &amp; WhatsApp Status
+      </p>
     </div>
   );
 }
