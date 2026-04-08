@@ -48,6 +48,26 @@ function ago(ts) {
   return h < 24 ? h + "h ago" : Math.floor(h / 24) + "d ago";
 }
 
+// Safe DOM helper — no innerHTML
+function el(tag, attrs, children) {
+  const node = document.createElement(tag);
+  if (attrs) {
+    for (const [k, v] of Object.entries(attrs)) {
+      if (k === "className") node.className = v;
+      else if (k === "textContent") node.textContent = v;
+      else if (k.startsWith("style.")) node.style[k.slice(6)] = v;
+      else node.setAttribute(k, v);
+    }
+  }
+  if (children) {
+    for (const c of Array.isArray(children) ? children : [children]) {
+      if (typeof c === "string") node.appendChild(document.createTextNode(c));
+      else if (c) node.appendChild(c);
+    }
+  }
+  return node;
+}
+
 // ── Tabs ───────────────────────────────────────────────────
 
 let currentTab = "activity";
@@ -70,12 +90,9 @@ function loadStats() {
     }
     lastData = data;
 
-    // Session time
     $("#sessionTime").textContent = data.sessionMinutes > 0 ? data.sessionMinutes + "m" : "<1m";
-
-    // Metrics
     $("#totalTime").textContent = fmt(data.totalSeconds);
-    $("#siteCount").textContent = data.siteCount;
+    $("#siteCount").textContent = String(data.siteCount);
 
     const cats = Object.entries(data.categories).sort((a, b) => b[1] - a[1]);
     $("#topCategory").textContent = cats.length > 0 ? cats[0][0].split(" ")[0] : "\u2014";
@@ -93,69 +110,96 @@ function showApp() {
   $("#app").classList.remove("hidden");
 }
 
-// ── Categories ────────────────────────────────────────────
+// ── Categories (safe DOM) ─────────────────────────────────
 
 function renderCategories(categories, total) {
-  const el = $("#categories");
+  const container = $("#categories");
+  container.textContent = "";
   const sorted = Object.entries(categories).sort((a, b) => b[1] - a[1]);
 
   if (!sorted.length) {
-    el.innerHTML = '<div class="empty">Browse some sites to see data here</div>';
+    container.appendChild(el("div", { className: "empty", textContent: "Browse some sites to see data here" }));
     return;
   }
 
-  el.innerHTML = sorted.slice(0, 5).map(([name, secs]) => {
+  sorted.slice(0, 5).forEach(([name, secs]) => {
     const pct = total > 0 ? (secs / total) * 100 : 0;
     const cls = CAT_CLASS[name] || "c-other";
     const hex = CAT_HEX[name] || "#44445a";
-    return `<div class="cat-row">
-      <div class="cat-info">
-        <div class="cat-left"><div class="cat-dot ${cls}"></div><span class="cat-name">${name}</span></div>
-        <span class="cat-time">${fmt(secs)}</span>
-      </div>
-      <div class="cat-bar-bg"><div class="cat-bar-fill" style="width:${pct}%;background:${hex}"></div></div>
-    </div>`;
-  }).join("");
+
+    const row = el("div", { className: "cat-row" }, [
+      el("div", { className: "cat-info" }, [
+        el("div", { className: "cat-left" }, [
+          el("div", { className: "cat-dot " + cls }),
+          el("span", { className: "cat-name", textContent: name }),
+        ]),
+        el("span", { className: "cat-time", textContent: fmt(secs) }),
+      ]),
+      (() => {
+        const bg = el("div", { className: "cat-bar-bg" });
+        const fill = el("div", { className: "cat-bar-fill" });
+        fill.style.width = pct + "%";
+        fill.style.background = hex;
+        bg.appendChild(fill);
+        return bg;
+      })(),
+    ]);
+    container.appendChild(row);
+  });
 }
 
-// ── Top Sites ─────────────────────────────────────────────
+// ── Top Sites (safe DOM) ──────────────────────────────────
 
 function renderTopSites(sites) {
-  const el = $("#topSites");
+  const container = $("#topSites");
+  container.textContent = "";
 
   if (!sites.length) {
-    el.innerHTML = '<div class="empty">No sites tracked yet</div>';
+    container.appendChild(el("div", { className: "empty", textContent: "No sites tracked yet" }));
     return;
   }
 
-  el.innerHTML = sites.slice(0, 6).map((s, i) => `
-    <div class="site-row">
-      <div class="site-rank${i === 0 ? " top" : ""}">${i + 1}</div>
-      <span class="site-host">${s.host}</span>
-      <div class="site-meta">
-        <span class="site-visits">${s.visits}x</span>
-        <span class="site-time">${fmt(s.seconds)}</span>
-      </div>
-    </div>
-  `).join("");
+  sites.slice(0, 6).forEach((s, i) => {
+    const row = el("div", { className: "site-row" }, [
+      el("div", { className: "site-rank" + (i === 0 ? " top" : ""), textContent: String(i + 1) }),
+      el("span", { className: "site-host", textContent: s.host }),
+      el("div", { className: "site-meta" }, [
+        el("span", { className: "site-visits", textContent: s.visits + "x" }),
+        el("span", { className: "site-time", textContent: fmt(s.seconds) }),
+      ]),
+    ]);
+    container.appendChild(row);
+  });
 }
 
-// ── Neural Effects ────────────────────────────────────────
+// ── Neural Effects (safe DOM) ─────────────────────────────
 
 function renderEffects(analysis) {
-  const el = $("#effectsContent");
+  const container = $("#effectsContent");
+  container.textContent = "";
 
   if (!analysis) {
-    el.innerHTML = `<div class="effects-empty">
-      <div class="effects-empty-icon">
-        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#5a5a72" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
-          <path d="M12 2C8.5 2 5 4.5 5 8c0 1.5.5 3 1.5 4C5.5 13 5 14.5 5 16c0 3.5 3.5 6 7 6s7-2.5 7-6c0-1.5-.5-3-1.5-4 1-1 1.5-2.5 1.5-4 0-3.5-3.5-6-7-6z"/>
-          <path d="M12 2v20"/><path d="M5 8h14"/><path d="M5 16h14"/>
-        </svg>
-      </div>
-      <h3>No analysis yet</h3>
-      <p>Hit "Analyze Brain Effects" to see how your browsing affects your brain.</p>
-    </div>`;
+    const emptyIcon = document.createElementNS("http://www.w3.org/2000/svg", "svg");
+    emptyIcon.setAttribute("width", "22");
+    emptyIcon.setAttribute("height", "22");
+    emptyIcon.setAttribute("viewBox", "0 0 24 24");
+    emptyIcon.setAttribute("fill", "none");
+    emptyIcon.setAttribute("stroke", "#5a5a72");
+    emptyIcon.setAttribute("stroke-width", "1.5");
+    emptyIcon.setAttribute("stroke-linecap", "round");
+    emptyIcon.setAttribute("stroke-linejoin", "round");
+    const p1 = document.createElementNS("http://www.w3.org/2000/svg", "path");
+    p1.setAttribute("d", "M2 12h4l3-7 3.5 14 3-12 2.5 5H22");
+    emptyIcon.appendChild(p1);
+
+    const iconWrap = el("div", { className: "effects-empty-icon" });
+    iconWrap.appendChild(emptyIcon);
+
+    container.appendChild(el("div", { className: "effects-empty" }, [
+      iconWrap,
+      el("h3", { textContent: "No analysis yet" }),
+      el("p", { textContent: 'Hit "Analyze Brain Effects" to see how your browsing affects your brain.' }),
+    ]));
     return;
   }
 
@@ -168,33 +212,42 @@ function renderEffects(analysis) {
     { name: "Social Need", score: analysis.socialNeedScore, color: "#8a80e0" },
   ];
 
-  let html = '<div class="effects-grid">';
+  const grid = el("div", { className: "effects-grid" });
   effects.forEach((e) => {
-    html += `<div class="effect-card">
-      <div class="effect-label">${e.name}</div>
-      <div class="effect-row">
-        <span class="effect-value" style="color:${e.color}">${e.score}</span>
-        <span class="effect-max">/10</span>
-      </div>
-      <div class="effect-bar-bg"><div class="effect-bar-fill" style="width:${e.score * 10}%;background:${e.color}"></div></div>
-    </div>`;
+    const valSpan = el("span", { className: "effect-value", textContent: String(e.score) });
+    valSpan.style.color = e.color;
+    const barFill = el("div", { className: "effect-bar-fill" });
+    barFill.style.width = (e.score * 10) + "%";
+    barFill.style.background = e.color;
+
+    grid.appendChild(el("div", { className: "effect-card" }, [
+      el("div", { className: "effect-label", textContent: e.name }),
+      el("div", { className: "effect-row" }, [
+        valSpan,
+        el("span", { className: "effect-max", textContent: "/10" }),
+      ]),
+      el("div", { className: "effect-bar-bg" }, [barFill]),
+    ]));
   });
-  html += "</div>";
+  container.appendChild(grid);
 
   if (analysis.summary) {
-    html += `<div class="effects-summary">${analysis.summary}</div>`;
+    container.appendChild(el("div", { className: "effects-summary", textContent: analysis.summary }));
   }
 
   if (analysis.analyzedAt) {
-    html += `<div class="effects-time">Analyzed ${ago(analysis.analyzedAt)}</div>`;
+    container.appendChild(el("div", { className: "effects-time", textContent: "Analyzed " + ago(analysis.analyzedAt) }));
   }
-
-  el.innerHTML = html;
 }
 
 // ── Analyze ───────────────────────────────────────────────
 
+let analyzing = false;
+
 function startAnalysis() {
+  if (analyzing) return;
+  analyzing = true;
+
   $("#app").classList.add("hidden");
   $("#analyzing").classList.remove("hidden");
 
@@ -218,6 +271,7 @@ function startAnalysis() {
 
   chrome.runtime.sendMessage({ type: "ANALYZE_BRAIN" }, (res) => {
     clearInterval(timer);
+    analyzing = false;
     fill.style.width = "100%";
 
     setTimeout(() => {
@@ -226,7 +280,8 @@ function startAnalysis() {
         switchTab("effects");
         loadStats();
       } else {
-        alert(res?.error || "Analysis failed. Browse a few sites first.");
+        const errMsg = (res && res.error) ? res.error : "Analysis failed. Browse a few sites first.";
+        alert(errMsg);
         $("#app").classList.remove("hidden");
       }
     }, 500);
@@ -238,15 +293,17 @@ function startAnalysis() {
 document.addEventListener("DOMContentLoaded", () => {
   loadStats();
 
-  // Tab clicks
   $$(".tab").forEach((t) => t.addEventListener("click", () => switchTab(t.dataset.tab)));
 
-  // Buttons
   $("#analyzeBtn").addEventListener("click", startAnalysis);
 
   $("#resetBtn").addEventListener("click", () => {
     if (confirm("Reset all tracking data?")) {
       chrome.runtime.sendMessage({ type: "RESET_SESSION" }, () => {
+        if (chrome.runtime.lastError) {
+          console.error("Reset failed:", chrome.runtime.lastError.message);
+          return;
+        }
         switchTab("activity");
         loadStats();
       });
@@ -254,6 +311,10 @@ document.addEventListener("DOMContentLoaded", () => {
   });
 
   $("#fullBtn").addEventListener("click", () => {
-    chrome.tabs.create({ url: "https://neurotest.live" });
+    chrome.tabs.create({ url: "https://neurotest.live" }, () => {
+      if (chrome.runtime.lastError) {
+        console.error("Failed to open tab:", chrome.runtime.lastError.message);
+      }
+    });
   });
 });
