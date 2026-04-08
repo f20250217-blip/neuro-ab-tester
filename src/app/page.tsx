@@ -6,6 +6,7 @@ import UploadZone from "@/components/UploadZone";
 import ScoreBar from "@/components/ScoreBar";
 import RegionTable from "@/components/RegionTable";
 import { ComparisonResult, NeuralAnalysis } from "@/lib/neuro-engine";
+import ShareCard from "@/components/ShareCard";
 
 const Brain3D = dynamic(() => import("@/components/Brain3D"), {
   ssr: false,
@@ -910,6 +911,13 @@ export default function Home() {
             <NeuroCard analysis={result.contentB} color="#00e8b0" mode="A/B Test" />
           </div>
 
+          {/* Share Winner Card */}
+          <ShareCard
+            analysis={result.winner === "A" ? result.contentA : result.contentB}
+            mode="A/B Test"
+            color={result.winner === "A" ? "#7c6cf0" : "#00e8b0"}
+          />
+
           {/* Tab Nav */}
           <div className="flex gap-1 bg-[#0c0c14] rounded-2xl p-1.5 border border-[#1e1e30] tab-scroll no-select">
             {[
@@ -1158,6 +1166,9 @@ export default function Home() {
 
           {/* Neuro Card — shareable identity artifact */}
           <NeuroCard analysis={profileResult} color={currentMode.color} mode={currentMode.shortTitle} />
+
+          {/* Shareable Result Card */}
+          <ShareCard analysis={profileResult} mode={currentMode.shortTitle} color={currentMode.color} />
 
           {/* Tabs */}
           <div className="flex gap-1 bg-[#0c0c14] rounded-2xl p-1.5 border border-[#1e1e30] tab-scroll no-select">
