@@ -127,23 +127,39 @@ export default function ShareCard({ analysis, mode, color }: ShareCardProps) {
     { label: "Focus", value: analysis.attentionCapture, emoji: "\uD83D\uDC41\uFE0F" },
   ];
 
-  /* ── Share text — emotional, competitive, includes brain type ── */
+  /* ── Result share URL (triggers OG preview on all platforms) ── */
 
-  const twitterText = `My brain type: ${arch.name} ${arch.emoji}\nScore: ${score}/100 (${rank.label})\n\n"${insight.slice(0, 100)}..."\n\nThink you can beat me? \uD83D\uDC47\nneurotest.live`;
-  const whatsAppText = `I just got my brain decoded by AI and I'm ${arch.name} ${arch.emoji}\n\nScore: ${score}/100 \u2014 ${rank.label}\n\n"${insight}"\n\nBet you can't beat my score \uD83D\uDE0F\nTry free: https://neurotest.live`;
-  const copyText = `I'm "${arch.name}" ${arch.emoji} with a ${score}/100 brain score (${rank.label}). Think you can beat me? Try free: https://neurotest.live`;
-  const nativeShareText = `I'm "${arch.name}" ${arch.emoji} \u2014 ${score}/100 brain score. Bet you can't beat me \uD83D\uDE0F`;
+  const archKey = arch.name.toLowerCase().replace("the ", "");
+  const resultUrl = `https://neurotest.live/result?score=${score}&type=${encodeURIComponent(archKey)}&mode=${encodeURIComponent(mode)}&insight=${encodeURIComponent(insight.slice(0, 150))}`;
 
-  /* ── Image capture — card format (square-ish, for feed posts) ── */
+  /* ── Share text — includes link with OG preview ── */
+
+  const twitterText = `My brain type: ${arch.name} ${arch.emoji}\nScore: ${score}/100 (${rank.label})\n\nThink you can beat me? \uD83D\uDC47\n${resultUrl}`;
+  const whatsAppText = `I just got my brain decoded by AI and I'm ${arch.name} ${arch.emoji}\n\nScore: ${score}/100 \u2014 ${rank.label}\n\n"${insight.slice(0, 120)}..."\n\nBet you can't beat my score \uD83D\uDE0F\n${resultUrl}`;
+  const copyText = `I'm "${arch.name}" ${arch.emoji} with a ${score}/100 brain score (${rank.label}). Think you can beat me? ${resultUrl}`;
+
+  /* ── Reliable image capture — waits for fonts + rendering ── */
 
   const captureCard = useCallback(async (): Promise<string | null> => {
     if (!cardRef.current) return null;
     setGenerating(true);
     try {
+      // Wait for fonts to load before capture
+      if (document.fonts?.ready) await document.fonts.ready;
+      // Give browser a frame to finish rendering
+      await new Promise((r) => requestAnimationFrame(() => requestAnimationFrame(r)));
+
       const dataUrl = await toPng(cardRef.current, {
-        pixelRatio: 2,
+        pixelRatio: 3,
         cacheBust: true,
         backgroundColor: "#050508",
+        skipAutoScale: true,
+        filter: (node: HTMLElement) => {
+          // Skip hidden elements that cause black screens
+          if (node.style?.display === "none") return false;
+          if (node.style?.visibility === "hidden") return false;
+          return true;
+        },
       });
       return dataUrl;
     } catch {
@@ -153,58 +169,64 @@ export default function ShareCard({ analysis, mode, color }: ShareCardProps) {
     }
   }, []);
 
-  /* ── Image capture — story format (9:16 ratio for IG/WA Status) ── */
+  /* ── Story image (9:16) — built from scratch, not cloned ── */
 
   const captureStory = useCallback(async (): Promise<string | null> => {
     if (!cardRef.current) return null;
     setGenerating(true);
     try {
-      const cardEl = cardRef.current;
-      const cardRect = cardEl.getBoundingClientRect();
-      const cardWidth = cardRect.width;
+      if (document.fonts?.ready) await document.fonts.ready;
+      await new Promise((r) => requestAnimationFrame(() => requestAnimationFrame(r)));
 
-      // Create a 9:16 wrapper, place card centered vertically
-      const wrapper = document.createElement("div");
-      wrapper.style.cssText = `
-        width: ${cardWidth}px;
-        height: ${cardWidth * (16 / 9)}px;
-        background: linear-gradient(180deg, #050508 0%, #0a0a14 50%, #050508 100%);
-        display: flex;
-        flex-direction: column;
-        align-items: center;
-        justify-content: center;
-        padding: 24px;
-        position: fixed;
-        top: -9999px;
-        left: -9999px;
-      `;
-
-      // Clone card into wrapper
-      const clone = cardEl.cloneNode(true) as HTMLElement;
-      clone.style.width = `${cardWidth - 48}px`;
-      clone.style.maxWidth = "100%";
-      wrapper.appendChild(clone);
-
-      // Add CTA text below card
-      const cta = document.createElement("div");
-      cta.style.cssText = `
-        text-align: center;
-        margin-top: 20px;
-        font-family: Inter, system-ui, sans-serif;
-      `;
-      cta.innerHTML = `<div style="color: #7a7a98; font-size: 13px; font-weight: 600;">Decode your brain free</div><div style="color: #7c6cf0; font-size: 15px; font-weight: 800; margin-top: 4px;">neurotest.live</div>`;
-      wrapper.appendChild(cta);
-
-      document.body.appendChild(wrapper);
-
-      const dataUrl = await toPng(wrapper, {
-        pixelRatio: 2,
+      // First capture the card itself
+      const cardDataUrl = await toPng(cardRef.current, {
+        pixelRatio: 3,
         cacheBust: true,
         backgroundColor: "#050508",
+        skipAutoScale: true,
       });
 
-      document.body.removeChild(wrapper);
-      return dataUrl;
+      // Now build the 9:16 story canvas manually
+      const canvas = document.createElement("canvas");
+      const w = 1080;
+      const h = 1920;
+      canvas.width = w;
+      canvas.height = h;
+      const ctx = canvas.getContext("2d");
+      if (!ctx) return null;
+
+      // Background gradient
+      const grad = ctx.createLinearGradient(0, 0, 0, h);
+      grad.addColorStop(0, "#050508");
+      grad.addColorStop(0.5, "#0a0a14");
+      grad.addColorStop(1, "#050508");
+      ctx.fillStyle = grad;
+      ctx.fillRect(0, 0, w, h);
+
+      // Load card image and draw centered
+      const cardImg = new Image();
+      await new Promise<void>((resolve, reject) => {
+        cardImg.onload = () => resolve();
+        cardImg.onerror = reject;
+        cardImg.src = cardDataUrl;
+      });
+
+      const cardDrawW = w - 80; // 40px padding each side
+      const cardDrawH = (cardImg.height / cardImg.width) * cardDrawW;
+      const cardY = (h - cardDrawH) / 2 - 60; // slightly above center
+      ctx.drawImage(cardImg, 40, cardY, cardDrawW, cardDrawH);
+
+      // CTA text below card
+      const ctaY = cardY + cardDrawH + 50;
+      ctx.textAlign = "center";
+      ctx.fillStyle = "#7a7a98";
+      ctx.font = "600 36px Inter, system-ui, sans-serif";
+      ctx.fillText("Decode your brain free", w / 2, ctaY);
+      ctx.fillStyle = "#7c6cf0";
+      ctx.font = "800 42px Inter, system-ui, sans-serif";
+      ctx.fillText("neurotest.live", w / 2, ctaY + 52);
+
+      return canvas.toDataURL("image/png", 1.0);
     } catch {
       return null;
     } finally {
@@ -218,22 +240,22 @@ export default function ShareCard({ analysis, mode, color }: ShareCardProps) {
     const dataUrl = await captureCard();
     if (!dataUrl) return;
     const link = document.createElement("a");
-    link.download = `neurotest-${arch.name.toLowerCase().replace(/\s/g, "-")}-${score}.png`;
+    link.download = `neurotest-${archKey}-${score}.png`;
     link.href = dataUrl;
     link.click();
-  }, [captureCard, arch.name, score]);
+  }, [captureCard, archKey, score]);
 
   const handleDownloadStory = useCallback(async () => {
     const dataUrl = await captureStory();
     if (!dataUrl) return;
     const link = document.createElement("a");
-    link.download = `neurotest-story-${arch.name.toLowerCase().replace(/\s/g, "-")}-${score}.png`;
+    link.download = `neurotest-story-${archKey}-${score}.png`;
     link.href = dataUrl;
     link.click();
     setStorySaved(true);
-  }, [captureStory, arch.name, score]);
+  }, [captureStory, archKey, score]);
 
-  /* ── Platform share handlers (text only — instant) ── */
+  /* ── Platform share handlers — all use resultUrl for OG previews ── */
 
   const handleTwitter = useCallback(() => {
     window.open(`https://twitter.com/intent/tweet?text=${encodeURIComponent(twitterText)}`, "_blank", "noopener,noreferrer");
