@@ -7,6 +7,25 @@ import * as THREE from "three";
 import { BrainRegion } from "@/lib/neuro-engine";
 
 /* ============================================
+   PERFORMANCE — shared utilities
+   ============================================ */
+// Reusable temporaries — NEVER allocate in hot loops
+const _v1 = new THREE.Vector3();
+const _v2 = new THREE.Vector3();
+const _col = new THREE.Color();
+
+// Tab visibility hook — pause rendering when hidden
+function useTabVisible() {
+  const visible = useRef(true);
+  useEffect(() => {
+    const handler = () => { visible.current = document.visibilityState === "visible"; };
+    document.addEventListener("visibilitychange", handler);
+    return () => document.removeEventListener("visibilitychange", handler);
+  }, []);
+  return visible;
+}
+
+/* ============================================
    INFLUENCE SOURCES — what shapes your brain
    ============================================ */
 const INFLUENCE_SOURCES = [
@@ -216,7 +235,7 @@ function BrainMesh({ regions, autoRotate, isMobile, influenceRef }: { regions: B
         geo = (child as THREE.Mesh).geometry.clone();
       }
     });
-    if (!geo) geo = new THREE.SphereGeometry(1.3, 64, 48);
+    if (!geo) geo = new THREE.SphereGeometry(1.3, 32, 24);
 
     geo.computeBoundingBox();
     const center = new THREE.Vector3();
@@ -369,9 +388,6 @@ function BrainMesh({ regions, autoRotate, isMobile, influenceRef }: { regions: B
           transparent
         />
       </mesh>
-      <mesh geometry={coloredGeo} scale={1.01}>
-        <meshBasicMaterial color="#4422aa" transparent opacity={0.03} side={THREE.BackSide} />
-      </mesh>
     </group>
   );
 }
@@ -400,7 +416,7 @@ function NeuralPathways({ regions }: { regions: BrainRegion[] }) {
         }
       }
     }
-    return conns.sort((a, b) => b.strength - a.strength).slice(0, 8);
+    return conns.sort((a, b) => b.strength - a.strength).slice(0, 4);
   }, [active]);
 
   return (
@@ -414,7 +430,7 @@ function NeuralPathways({ regions }: { regions: BrainRegion[] }) {
 
 function PathTube({ curve, strength, color, index }: { curve: THREE.QuadraticBezierCurve3; strength: number; color: THREE.Color; index: number }) {
   const meshRef = useRef<THREE.Mesh>(null);
-  const geo = useMemo(() => new THREE.TubeGeometry(curve, 16, 0.006 + strength * 0.008, 4, false), [curve, strength]);
+  const geo = useMemo(() => new THREE.TubeGeometry(curve, 8, 0.006 + strength * 0.008, 3, false), [curve, strength]);
 
   useFrame((state) => {
     if (meshRef.current) {
@@ -435,9 +451,9 @@ function PathTube({ curve, strength, color, index }: { curve: THREE.QuadraticBez
    ============================================ */
 function FlowingParticles({ regions }: { regions: BrainRegion[] }) {
   const instancedRef = useRef<THREE.InstancedMesh>(null);
-  const COUNT = 30;
+  const COUNT = 12;
 
-  const active = useMemo(() => regions.filter((r) => r.activation > 0.4).sort((a, b) => b.activation - a.activation).slice(0, 5), [regions]);
+  const active = useMemo(() => regions.filter((r) => r.activation > 0.4).sort((a, b) => b.activation - a.activation).slice(0, 4), [regions]);
 
   const connections = useMemo(() => {
     const conns: { curve: THREE.QuadraticBezierCurve3; color: THREE.Color }[] = [];
@@ -453,7 +469,7 @@ function FlowingParticles({ regions }: { regions: BrainRegion[] }) {
         });
       }
     }
-    return conns.slice(0, 6);
+    return conns.slice(0, 4);
   }, [active]);
 
   const particleData = useMemo(() => {
@@ -585,16 +601,20 @@ function InfluenceIcons({ regions, influenceRef }: { regions: BrainRegion[]; inf
 
   const ease = (t: number) => t < 0.5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2;
 
-  // Per-icon smoothed state — persists across frames for buttery lerps
+  // Pre-allocated persistent state — zero per-frame allocations
   const iconState = useRef(INFLUENCE_SOURCES.map(() => ({ opacity: 0, scale: 0.01, pos: new THREE.Vector3(0, 10, 0) })));
+  const nearRegionsRef = useRef(new Map<string, number>());
+  const positionsRef = useRef(INFLUENCE_SOURCES.map(() => new THREE.Vector3()));
+  const cachedColors = useMemo(() => INFLUENCE_SOURCES.map(s => new THREE.Color(s.color)), []);
 
   useFrame((state) => {
     if (!groupRef.current) return;
     const t = state.clock.elapsedTime;
     const ph = getPhase(t);
-    const nearRegions = new Map<string, number>();
-    const positions: THREE.Vector3[] = [];
-    const lerpSpeed = 0.1; // how fast icons smoothly move between targets
+    const nearRegions = nearRegionsRef.current;
+    nearRegions.clear();
+    const positions = positionsRef.current;
+    const lerpSpeed = 0.1;
 
     groupRef.current.children.forEach((child, i) => {
       const src = INFLUENCE_SOURCES[i];
@@ -648,7 +668,7 @@ function InfluenceIcons({ regions, influenceRef }: { regions: BrainRegion[]; inf
             if (diveP > 0.9 && diveP < 0.98) {
               const last = influenceRef.current.activePulses[influenceRef.current.activePulses.length - 1];
               if (!last || t - last.time > 0.2) {
-                influenceRef.current.activePulses.push({ center: targetPos.clone(), color: new THREE.Color(src.color), time: t });
+                influenceRef.current.activePulses.push({ center: targetPos.clone(), color: cachedColors[i].clone(), time: t });
               }
             }
             if (diveP > 0.5) {
@@ -677,7 +697,7 @@ function InfluenceIcons({ regions, influenceRef }: { regions: BrainRegion[]; inf
             if (dP > 0.85) {
               const last = influenceRef.current.activePulses[influenceRef.current.activePulses.length - 1];
               if (!last || t - last.time > 0.15) {
-                influenceRef.current.activePulses.push({ center: targetPos.clone(), color: new THREE.Color(src.color), time: t });
+                influenceRef.current.activePulses.push({ center: targetPos.clone(), color: cachedColors[i].clone(), time: t });
               }
             }
             for (const rid of src.targetRegions) nearRegions.set(rid, Math.max(nearRegions.get(rid) || 0, dP * ph.overload));
@@ -715,7 +735,7 @@ function InfluenceIcons({ regions, influenceRef }: { regions: BrainRegion[]; inf
       child.position.copy(is.pos);
       sprite.scale.setScalar(Math.max(0.001, is.scale));
       mat.opacity = Math.max(0, is.opacity);
-      positions.push(is.pos.clone());
+      positions[i].copy(is.pos);
     });
 
     influenceRef.current.positions = positions;
@@ -760,6 +780,8 @@ function InfluenceConnections({ regions, influenceRef }: { regions: BrainRegion[
     return { geometry: geo, colorAttr: colArr };
   }, []);
 
+  const cachedColors = useMemo(() => INFLUENCE_SOURCES.map(s => new THREE.Color(s.color)), []);
+
   useFrame(() => {
     if (!lineRef.current || !influenceRef.current) return;
     const { positions, nearRegions } = influenceRef.current;
@@ -773,7 +795,7 @@ function InfluenceConnections({ regions, influenceRef }: { regions: BrainRegion[
       const src = INFLUENCE_SOURCES[i];
       const iconPos = positions[i];
       if (!iconPos) continue;
-      const col = new THREE.Color(src.color);
+      const col = cachedColors[i];
 
       for (const targetId of src.targetRegions) {
         if (segIdx >= MAX_SEGMENTS) break;
@@ -819,60 +841,40 @@ function InfluenceConnections({ regions, influenceRef }: { regions: BrainRegion[
 /* ============================================
    PARTICLES — ambient + floating dust
    ============================================ */
-function Particles({ enhanced }: { enhanced?: boolean }) {
+function Particles() {
   const ref = useRef<THREE.Points>(null);
-  const count = enhanced ? 80 : 40;
+  const COUNT = 20;
 
   const { positions: posArr, colors } = useMemo(() => {
-    const pos = new Float32Array(count * 3);
-    const col = new Float32Array(count * 3);
-    for (let i = 0; i < count; i++) {
+    const pos = new Float32Array(COUNT * 3);
+    const col = new Float32Array(COUNT * 3);
+    for (let i = 0; i < COUNT; i++) {
       const t = Math.random() * Math.PI * 2;
       const p = Math.acos(2 * Math.random() - 1);
-      const r = 1.6 + Math.random() * (enhanced ? 1.5 : 0.5);
+      const r = 1.6 + Math.random() * 1.2;
       pos[i * 3] = r * Math.sin(p) * Math.cos(t);
       pos[i * 3 + 1] = r * Math.sin(p) * Math.sin(t);
       pos[i * 3 + 2] = r * Math.cos(p);
-      // Color variety
-      const hue = Math.random();
-      const c = new THREE.Color().setHSL(0.7 + hue * 0.2, 0.6, 0.5 + Math.random() * 0.3);
+      const c = new THREE.Color().setHSL(0.7 + Math.random() * 0.2, 0.6, 0.5 + Math.random() * 0.3);
       col[i * 3] = c.r;
       col[i * 3 + 1] = c.g;
       col[i * 3 + 2] = c.b;
     }
     return { positions: pos, colors: col };
-  }, [count, enhanced]);
+  }, []);
 
+  // Just rotate the whole group — no per-particle position writes
   useFrame((s) => {
-    if (!ref.current) return;
-    ref.current.rotation.y = s.clock.elapsedTime * 0.015;
-    if (enhanced) {
-      // Gentle float
-      const posAttr = ref.current.geometry.attributes.position as THREE.BufferAttribute;
-      for (let i = 0; i < count; i++) {
-        const baseY = posArr[i * 3 + 1];
-        (posAttr.array as Float32Array)[i * 3 + 1] = baseY + Math.sin(s.clock.elapsedTime * 0.5 + i * 0.3) * 0.03;
-      }
-      posAttr.needsUpdate = true;
-    }
+    if (ref.current) ref.current.rotation.y = s.clock.elapsedTime * 0.015;
   });
 
   return (
     <points ref={ref}>
       <bufferGeometry>
         <bufferAttribute attach="attributes-position" args={[posArr, 3]} />
-        {enhanced && <bufferAttribute attach="attributes-color" args={[colors, 3]} />}
+        <bufferAttribute attach="attributes-color" args={[colors, 3]} />
       </bufferGeometry>
-      <pointsMaterial
-        color={enhanced ? undefined : "#8866ff"}
-        vertexColors={enhanced}
-        size={enhanced ? 0.012 : 0.008}
-        transparent
-        opacity={enhanced ? 0.2 : 0.12}
-        sizeAttenuation
-        blending={THREE.AdditiveBlending}
-        depthWrite={false}
-      />
+      <pointsMaterial vertexColors size={0.012} transparent opacity={0.18} sizeAttenuation blending={THREE.AdditiveBlending} depthWrite={false} />
     </points>
   );
 }
@@ -975,64 +977,113 @@ interface Brain3DProps {
 
 export default function Brain3D({ regions, className = "", autoRotate = true, showParticles = false, showInfluence = false, onStatusChange, onPhaseChange }: Brain3DProps) {
   const [isMobile, setIsMobile] = useState(false);
-  const influenceRef = useRef<InfluenceState>({ positions: [], nearRegions: new Map(), activePulses: [], phase: "calm", phaseProgress: 0, cycleIndex: 0 });
+  const influenceRef = useRef<InfluenceState>({ positions: INFLUENCE_SOURCES.map(() => new THREE.Vector3()), nearRegions: new Map(), activePulses: [], phase: "calm", phaseProgress: 0, cycleIndex: 0 });
 
   useEffect(() => {
     setIsMobile(window.innerWidth < 768 || "ontouchstart" in window);
   }, []);
 
+  // Mobile: pure CSS fallback — no Canvas, no WebGL, no crash risk
+  if (isMobile) {
+    return (
+      <div className={className} style={{ contain: "layout style paint" }}>
+        <MobileBrainCSS />
+      </div>
+    );
+  }
+
   return (
     <Brain3DErrorBoundary className={className}>
     <div className={className} style={{ contain: "layout style paint" }}>
       <Canvas
-        camera={{ position: [0, 1.2, isMobile ? 4.5 : 3.5], fov: isMobile ? 48 : 38 }}
-        dpr={[1, isMobile ? 1 : 1.5]}
-        performance={{ min: isMobile ? 0.3 : 0.5 }}
-        frameloop={isMobile ? "demand" : "always"}
+        camera={{ position: [0, 1.2, 3.5], fov: 38 }}
+        dpr={[1, Math.min(window.devicePixelRatio, 1.5)]}
+        performance={{ min: 0.5 }}
+        frameloop="always"
         gl={{
           antialias: false,
           alpha: true,
           toneMapping: THREE.ACESFilmicToneMapping,
           toneMappingExposure: 1.1,
-          powerPreference: isMobile ? "low-power" : "default",
+          powerPreference: "default",
           stencil: false,
           depth: true,
           preserveDrawingBuffer: false,
         }}
         style={{ background: "transparent", touchAction: "pan-y" }}
       >
-        {isMobile ? (
-          <MobileScene regions={regions} autoRotate={autoRotate} />
-        ) : (
-          <>
-            <ambientLight intensity={0.2} />
-            <directionalLight position={[3, 6, 4]} intensity={0.9} color="#ffffff" />
-            <directionalLight position={[-3, 3, -2]} intensity={0.3} color="#8888ff" />
-            <pointLight position={[0, 0, 0]} intensity={0.15} color="#7c6cf0" distance={4} />
-            <BrainMesh regions={regions} autoRotate={autoRotate} isMobile={false} influenceRef={showInfluence ? influenceRef : undefined} />
-            <NeuralPathways regions={regions} />
-            <FlowingParticles regions={regions} />
-            <RegionNodes regions={regions} influenceRef={showInfluence ? influenceRef : undefined} />
-            {showInfluence && <InfluenceIcons regions={regions} influenceRef={influenceRef} />}
-            {showInfluence && <InfluenceConnections regions={regions} influenceRef={influenceRef} />}
-            {showInfluence && <ScanPlane />}
-            {showInfluence && <StatusSync influenceRef={influenceRef} onStatusChange={onStatusChange} onPhaseChange={onPhaseChange} />}
-            {showParticles && <Particles enhanced={showInfluence} />}
-            <OrbitControls
-              enableZoom
-              enablePan={false}
-              minDistance={2.5}
-              maxDistance={7}
-              enableDamping
-              dampingFactor={0.15}
-              rotateSpeed={0.8}
-              zoomSpeed={0.6}
-            />
-          </>
-        )}
+        <VisibilityPause />
+        <ambientLight intensity={0.2} />
+        <directionalLight position={[3, 6, 4]} intensity={0.9} color="#ffffff" />
+        <directionalLight position={[-3, 3, -2]} intensity={0.3} color="#8888ff" />
+        <BrainMesh regions={regions} autoRotate={autoRotate} isMobile={false} influenceRef={showInfluence ? influenceRef : undefined} />
+        <NeuralPathways regions={regions} />
+        <FlowingParticles regions={regions} />
+        <RegionNodes regions={regions} influenceRef={showInfluence ? influenceRef : undefined} />
+        {showInfluence && <InfluenceIcons regions={regions} influenceRef={influenceRef} />}
+        {showInfluence && <InfluenceConnections regions={regions} influenceRef={influenceRef} />}
+        {showInfluence && <ScanPlane />}
+        {showInfluence && <StatusSync influenceRef={influenceRef} onStatusChange={onStatusChange} onPhaseChange={onPhaseChange} />}
+        {showParticles && <Particles />}
+        <OrbitControls
+          enableZoom
+          enablePan={false}
+          minDistance={2.5}
+          maxDistance={7}
+          enableDamping
+          dampingFactor={0.15}
+          rotateSpeed={0.8}
+          zoomSpeed={0.6}
+        />
       </Canvas>
     </div>
     </Brain3DErrorBoundary>
+  );
+}
+
+/* Pauses Three.js rendering when tab is hidden — saves 100% GPU when alt-tabbed */
+function VisibilityPause() {
+  const { gl, invalidate, scene, camera } = useThree();
+  const tabVisible = useTabVisible();
+
+  useFrame(() => {
+    if (!tabVisible.current) {
+      gl.setAnimationLoop(null);
+    }
+  });
+
+  useEffect(() => {
+    const resume = () => {
+      if (document.visibilityState === "visible") {
+        gl.setAnimationLoop((time: number) => {
+          gl.render(scene, camera);
+        });
+        invalidate();
+      }
+    };
+    document.addEventListener("visibilitychange", resume);
+    return () => document.removeEventListener("visibilitychange", resume);
+  }, [gl, invalidate, scene, camera]);
+
+  return null;
+}
+
+/* Mobile: CSS-only brain glow — zero JS, zero WebGL, ~0% CPU */
+function MobileBrainCSS() {
+  return (
+    <div className="w-full h-full flex items-center justify-center relative overflow-hidden">
+      <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-[55%] w-[280px] h-[220px] sm:w-[360px] sm:h-[280px]">
+        {/* Brain shape glow */}
+        <div className="absolute inset-0 rounded-[45%_55%_50%_50%/55%_50%_50%_45%] bg-gradient-to-br from-[#1a4a2a]/60 via-[#2a3a20]/40 to-[#3a2a10]/30 blur-[30px]" style={{ animation: "mobileBrainPulse 4s ease-in-out infinite" }} />
+        {/* Region glow spots */}
+        <div className="absolute top-[15%] left-[20%] w-[40%] h-[35%] rounded-full bg-[#ffbb00]/20 blur-[25px]" style={{ animation: "mobileBrainPulse 3s ease-in-out infinite 0.5s" }} />
+        <div className="absolute top-[35%] right-[15%] w-[35%] h-[30%] rounded-full bg-[#ff8800]/15 blur-[20px]" style={{ animation: "mobileBrainPulse 3.5s ease-in-out infinite 1s" }} />
+        <div className="absolute bottom-[20%] left-[25%] w-[45%] h-[35%] rounded-full bg-[#44aa66]/12 blur-[25px]" style={{ animation: "mobileBrainPulse 4.5s ease-in-out infinite 1.5s" }} />
+        <div className="absolute top-[25%] left-[40%] w-[30%] h-[30%] rounded-full bg-[#7c6cf0]/20 blur-[20px]" style={{ animation: "mobileBrainPulse 3s ease-in-out infinite 2s" }} />
+        {/* Subtle rim glow */}
+        <div className="absolute inset-[-10%] rounded-full border border-[#7c6cf0]/10 blur-[2px]" style={{ animation: "mobileBrainPulse 5s ease-in-out infinite" }} />
+      </div>
+    </div>
   );
 }
 
@@ -1071,41 +1122,7 @@ function StatusSync({ influenceRef, onStatusChange, onPhaseChange }: {
   return null;
 }
 
-/* Mobile scene — absolute bare minimum, manually invalidates at ~24fps */
-function MobileScene({ regions, autoRotate }: { regions: BrainRegion[]; autoRotate: boolean }) {
-  const { invalidate } = useThree();
-
-  // Tick at ~24fps instead of 60fps
-  useEffect(() => {
-    let id: number;
-    const tick = () => {
-      invalidate();
-      id = setTimeout(tick, 42) as unknown as number; // ~24fps
-    };
-    tick();
-    return () => clearTimeout(id);
-  }, [invalidate]);
-
-  return (
-    <>
-      <ambientLight intensity={0.25} />
-      <directionalLight position={[3, 6, 4]} intensity={0.9} color="#ffffff" />
-      <BrainMesh regions={regions} autoRotate={autoRotate} isMobile />
-      <OrbitControls
-        enableZoom
-        enablePan={false}
-        minDistance={3}
-        maxDistance={6}
-        enableDamping
-        dampingFactor={0.12}
-        rotateSpeed={0.6}
-        zoomSpeed={0.8}
-        touches={{ ONE: THREE.TOUCH.ROTATE, TWO: THREE.TOUCH.DOLLY_ROTATE }}
-        onChange={() => invalidate()}
-      />
-    </>
-  );
-}
+/* MobileScene removed — mobile now uses pure CSS fallback (MobileBrainCSS) */
 
 /* ============================================
    HERO BRAIN

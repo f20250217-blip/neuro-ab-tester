@@ -36,10 +36,6 @@ const MODE_LONG: Record<string, string> = {
 };
 
 function toBase64Url(str: string): string {
-  if (typeof Buffer !== "undefined") {
-    return Buffer.from(str, "utf-8").toString("base64url");
-  }
-  // Browser fallback — encode UTF-8 first since btoa only handles Latin1
   const bytes = new TextEncoder().encode(str);
   let binary = "";
   for (let i = 0; i < bytes.length; i++) binary += String.fromCharCode(bytes[i]);
@@ -47,10 +43,6 @@ function toBase64Url(str: string): string {
 }
 
 function fromBase64Url(b64: string): string {
-  if (typeof Buffer !== "undefined") {
-    return Buffer.from(b64, "base64url").toString("utf-8");
-  }
-  // Browser fallback
   const padded = b64.replace(/-/g, "+").replace(/_/g, "/");
   const binary = atob(padded);
   const bytes = new Uint8Array(binary.length);
