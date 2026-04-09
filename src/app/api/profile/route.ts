@@ -166,10 +166,15 @@ function parseAnalysisResponse(text: string) {
   };
 
   const extractEmotions = () => {
+    // Look specifically in the EMOTION_BREAKDOWN section for 0-1 scale values
+    const emotionSection = text.match(/EMOTION_BREAKDOWN[\s\S]*?(?=\n[A-Z_]{3,}:|$)/i)?.[0] || text;
     const extract = (name: string) => {
       const regex = new RegExp(`${name}[=:]\\s*([0-9.]+)`, "i");
-      const match = text.match(regex);
-      return match ? parseFloat(match[1]) : 0.5;
+      const match = emotionSection.match(regex);
+      let val = match ? parseFloat(match[1]) : 0.5;
+      // Clamp to 0-1: if LLM returned 0-10 scale, normalize
+      if (val > 1) val = val / 10;
+      return Math.min(1, Math.max(0, val));
     };
     return {
       joy: extract("joy"),

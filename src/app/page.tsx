@@ -1011,23 +1011,20 @@ export default function Home() {
       {/* ==================== PROCESSING STATE ==================== */}
       {state === "processing" && (
         <main className="fixed inset-0 top-[56px] overflow-hidden bg-[#050508] z-10">
-          <div className="absolute inset-0 pointer-events-none h-[50vh] md:h-[60vh]">
-            <Brain3D
-              regions={[
-                { name: "L-Frontal", id: "lf", role: "", position: [-0.4, 0.3, 0.7], activation: 0.85, color: "#ffaa00" },
-                { name: "R-Frontal", id: "rf", role: "", position: [0.4, 0.3, 0.7], activation: 0.80, color: "#ffcc00" },
-                { name: "L-Parietal", id: "lp", role: "", position: [-0.5, 0.5, 0.0], activation: 0.82, color: "#ff8800" },
-                { name: "R-Parietal", id: "rp", role: "", position: [0.5, 0.5, 0.0], activation: 0.72, color: "#ddcc00" },
-                { name: "L-Motor", id: "lm", role: "", position: [-0.3, 0.6, 0.2], activation: 0.88, color: "#ff6600" },
-                { name: "R-Motor", id: "rm", role: "", position: [0.3, 0.6, 0.2], activation: 0.75, color: "#ffaa00" },
-                { name: "L-Temporal", id: "lt", role: "", position: [-0.8, -0.1, 0.2], activation: 0.62, color: "#88cc00" },
-                { name: "R-Temporal", id: "rt", role: "", position: [0.8, -0.1, 0.2], activation: 0.52, color: "#44aa66" },
-                { name: "Prefrontal", id: "pfc", role: "", position: [0, 0.2, 0.9], activation: 0.82, color: "#ffbb00" },
-              ]}
-              className="w-full h-full"
-              autoRotate
-              showParticles
-            />
+          {/* Lightweight CSS brain glow — no WebGL during API call */}
+          <div className="absolute inset-0 pointer-events-none h-[50vh] md:h-[60vh] flex items-center justify-center">
+            <div className="relative w-[280px] h-[280px] sm:w-[360px] sm:h-[360px]">
+              <div className="absolute inset-0 rounded-full bg-[#ffaa00]/20 blur-[80px] animate-pulse" />
+              <div className="absolute top-[10%] left-[10%] w-[70%] h-[60%] rounded-full bg-[#ff6600]/15 blur-[60px] animate-pulse" style={{ animationDelay: "0.5s" }} />
+              <div className="absolute bottom-[5%] right-[5%] w-[50%] h-[50%] rounded-full bg-[#7c6cf0]/20 blur-[50px] animate-pulse" style={{ animationDelay: "1s" }} />
+              <div className="absolute top-[30%] left-[25%] w-[50%] h-[40%] rounded-full bg-[#00e8b0]/10 blur-[40px] animate-pulse" style={{ animationDelay: "1.5s" }} />
+              {/* Brain silhouette icon */}
+              <div className="absolute inset-0 flex items-center justify-center">
+                <svg className="w-24 h-24 sm:w-32 sm:h-32 text-[#7c6cf0]/30 animate-pulse" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1} strokeLinecap="round" strokeLinejoin="round">
+                  <path d="M2 12h4l3-7 3.5 14 3-12 2.5 5H22" />
+                </svg>
+              </div>
+            </div>
           </div>
 
           <div className="absolute inset-x-0 bottom-0" style={{ height: "55vh", background: "linear-gradient(to bottom, transparent 0%, #050508 50%)" }} />
@@ -1422,19 +1419,19 @@ export default function Home() {
                 <div className="flex items-center justify-between">
                   <span className="text-sm font-semibold text-[#f0f0f8]">Performance Prediction</span>
                   <div className="text-right">
-                    <div className="text-3xl font-black tabular-nums" style={{ color: profileResult.performancePrediction.overallScore >= 70 ? "#00e8b0" : "#ffb020" }}>
-                      {profileResult.performancePrediction.overallScore}
+                    <div className="text-3xl font-black tabular-nums" style={{ color: (profileResult.performancePrediction?.overallScore ?? 50) >= 70 ? "#00e8b0" : "#ffb020" }}>
+                      {profileResult.performancePrediction?.overallScore ?? 50}
                     </div>
                     <div className="text-[10px] text-[#4a4a68]">/100</div>
                   </div>
                 </div>
                 <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
                   {[
-                    { l: "Est. CTR", v: profileResult.performancePrediction.estimatedCTR },
-                    { l: "Engagement", v: profileResult.performancePrediction.engagementRate },
-                    { l: "Conversion", v: profileResult.performancePrediction.conversionPotential },
-                    { l: "View-Through", v: profileResult.performancePrediction.viewThroughRate },
-                    { l: "Shareability", v: profileResult.performancePrediction.shareability },
+                    { l: "Est. CTR", v: profileResult.performancePrediction?.estimatedCTR ?? "—" },
+                    { l: "Engagement", v: profileResult.performancePrediction?.engagementRate ?? "—" },
+                    { l: "Conversion", v: profileResult.performancePrediction?.conversionPotential ?? "—" },
+                    { l: "View-Through", v: profileResult.performancePrediction?.viewThroughRate ?? "—" },
+                    { l: "Shareability", v: profileResult.performancePrediction?.shareability ?? "—" },
                   ].map((s) => (
                     <div key={s.l} className="bg-[#0c0c14] rounded-xl p-3 border border-[#1e1e30]/30">
                       <p className="text-[10px] text-[#4a4a68] font-medium uppercase tracking-wider mb-1">{s.l}</p>
@@ -1445,6 +1442,7 @@ export default function Home() {
               </div>
 
               {/* Platforms */}
+              {(profileResult.platformScores?.length ?? 0) > 0 && (
               <div className="glass-card rounded-2xl p-6 space-y-4">
                 <h4 className="text-[10px] font-semibold text-[#4a4a68] uppercase tracking-[0.2em]">Platform Fit</h4>
                 {profileResult.platformScores.map((ps) => {
@@ -1456,33 +1454,36 @@ export default function Home() {
                           <span className="text-sm font-bold text-[#f0f0f8]">{ps.platform}</span>
                           <span className="px-2 py-0.5 rounded-md text-[10px] font-bold" style={{ backgroundColor: `${fc}15`, color: fc }}>{ps.fit}</span>
                         </div>
-                        <span className="text-lg font-black tabular-nums" style={{ color: currentMode.color }}>{ps.score.toFixed(1)}</span>
+                        <span className="text-lg font-black tabular-nums" style={{ color: currentMode.color }}>{(ps.score ?? 0).toFixed(1)}</span>
                       </div>
                       <p className="text-[11px] text-[#7a7a98]">{ps.tip}</p>
                     </div>
                   );
                 })}
               </div>
+              )}
 
               {/* Creative Health */}
+              {profileResult.creativeHealth && (
               <div className="glass-card rounded-2xl p-6 space-y-4">
                 <h4 className="text-[10px] font-semibold text-[#4a4a68] uppercase tracking-[0.2em]">Creative Health</h4>
                 <div className="grid grid-cols-3 gap-3">
                   <div className="bg-[#0c0c14] rounded-xl p-3 text-center border border-[#1e1e30]/30">
                     <p className="text-[10px] text-[#4a4a68] mb-1">Lifespan</p>
-                    <p className="text-xl font-black text-[#ffb020]">{profileResult.creativeHealth.fatigueLifespanDays}d</p>
+                    <p className="text-xl font-black text-[#ffb020]">{profileResult.creativeHealth.fatigueLifespanDays ?? 15}d</p>
                   </div>
                   <div className="bg-[#0c0c14] rounded-xl p-3 text-center border border-[#1e1e30]/30">
                     <p className="text-[10px] text-[#4a4a68] mb-1">Brand Safe</p>
-                    <p className="text-xl font-black" style={{ color: profileResult.creativeHealth.brandSafetyScore >= 7 ? "#00e8b0" : "#ffb020" }}>{profileResult.creativeHealth.brandSafetyScore}/10</p>
+                    <p className="text-xl font-black" style={{ color: (profileResult.creativeHealth.brandSafetyScore ?? 5) >= 7 ? "#00e8b0" : "#ffb020" }}>{profileResult.creativeHealth.brandSafetyScore ?? 5}/10</p>
                   </div>
                   <div className="bg-[#0c0c14] rounded-xl p-3 text-center border border-[#1e1e30]/30">
                     <p className="text-[10px] text-[#4a4a68] mb-1">Accessible</p>
-                    <p className="text-xl font-black" style={{ color: profileResult.creativeHealth.accessibilityScore >= 7 ? "#00e8b0" : "#ffb020" }}>{profileResult.creativeHealth.accessibilityScore}/10</p>
+                    <p className="text-xl font-black" style={{ color: (profileResult.creativeHealth.accessibilityScore ?? 5) >= 7 ? "#00e8b0" : "#ffb020" }}>{profileResult.creativeHealth.accessibilityScore ?? 5}/10</p>
                   </div>
                 </div>
-                <p className="text-xs text-[#7a7a98]">{profileResult.creativeHealth.fatigueReason}</p>
+                <p className="text-xs text-[#7a7a98]">{profileResult.creativeHealth.fatigueReason ?? ""}</p>
               </div>
+              )}
             </div>
           )}
 
@@ -1496,22 +1497,22 @@ export default function Home() {
           {/* Audience Personas */}
           {activeTab === "audience" && (
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 animate-float-up">
-              {profileResult.audiencePersonas.map((persona) => {
-                const rc = persona.resonanceScore >= 7 ? "#00e8b0" : persona.resonanceScore >= 4 ? "#ffb020" : "#ff4060";
+              {(profileResult.audiencePersonas ?? []).map((persona) => {
+                const rc = (persona.resonanceScore ?? 5) >= 7 ? "#00e8b0" : (persona.resonanceScore ?? 5) >= 4 ? "#ffb020" : "#ff4060";
                 return (
                   <div key={persona.name} className="glass-card glass-card-hover rounded-2xl p-5 space-y-3">
                     <div className="flex items-center justify-between">
                       <h5 className="text-xs font-bold text-[#f0f0f8]">{persona.name}</h5>
-                      <span className="text-lg font-black tabular-nums" style={{ color: rc }}>{persona.resonanceScore}<span className="text-[10px] text-[#4a4a68]">/10</span></span>
+                      <span className="text-lg font-black tabular-nums" style={{ color: rc }}>{persona.resonanceScore ?? 5}<span className="text-[10px] text-[#4a4a68]">/10</span></span>
                     </div>
                     <p className="text-xs text-[#7a7a98] leading-relaxed italic">&ldquo;{persona.reaction}&rdquo;</p>
-                    {persona.keyDrivers.length > 0 && (
+                    {(persona.keyDrivers?.length ?? 0) > 0 && (
                       <div>
                         <p className="text-[10px] text-[#00e8b0] font-semibold uppercase tracking-wider mb-1">Works</p>
                         {persona.keyDrivers.map((d, i) => <p key={i} className="text-[11px] text-[#7a7a98] flex items-center gap-1.5"><span className="w-1 h-1 rounded-full bg-[#00e8b0]" />{d}</p>)}
                       </div>
                     )}
-                    {persona.turnoffs.length > 0 && (
+                    {(persona.turnoffs?.length ?? 0) > 0 && (
                       <div>
                         <p className="text-[10px] text-[#ff4060] font-semibold uppercase tracking-wider mb-1">Doesn&apos;t Work</p>
                         {persona.turnoffs.map((t, i) => <p key={i} className="text-[11px] text-[#7a7a98] flex items-center gap-1.5"><span className="w-1 h-1 rounded-full bg-[#ff4060]" />{t}</p>)}
