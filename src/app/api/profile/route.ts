@@ -239,18 +239,27 @@ function parseAnalysisResponse(text: string) {
 
 // --- Per-mode input validation ---
 
-const MUSIC_URL_PATTERNS = [
-  /youtube\.com\/watch/i, /youtu\.be\//i, /music\.youtube\.com/i,
-  /spotify\.com\/(track|album|playlist)/i, /open\.spotify\.com/i,
-  /soundcloud\.com\//i, /music\.apple\.com\//i, /tidal\.com\//i,
-  /deezer\.com\//i, /audiomack\.com\//i, /bandcamp\.com\//i,
+const MUSIC_DOMAINS = [
+  "youtube.com", "youtu.be", "music.youtube.com",
+  "spotify.com", "open.spotify.com",
+  "soundcloud.com", "music.apple.com", "tidal.com",
+  "deezer.com", "audiomack.com", "bandcamp.com",
 ];
 
-const SOCIAL_URL_PATTERNS = [
-  /instagram\.com\//i, /twitter\.com\//i, /x\.com\//i,
-  /facebook\.com\//i, /tiktok\.com\//i, /linkedin\.com\//i,
-  /reddit\.com\//i, /threads\.net\//i, /pinterest\.com\//i,
+const SOCIAL_DOMAINS = [
+  "instagram.com", "twitter.com", "x.com",
+  "facebook.com", "tiktok.com", "linkedin.com",
+  "reddit.com", "threads.net", "pinterest.com",
 ];
+
+function isFromDomain(url: string, domains: string[]): boolean {
+  try {
+    const hostname = new URL(url).hostname.toLowerCase().replace(/^www\./, "");
+    return domains.some(d => hostname === d || hostname.endsWith("." + d));
+  } catch {
+    return domains.some(d => url.toLowerCase().includes(d));
+  }
+}
 
 function validateModeInput(
   mode: string,
@@ -276,7 +285,7 @@ function validateModeInput(
       if (file && !mime.startsWith("audio/") && !mime.startsWith("video/")) {
         return "Music mode requires audio or video files (MP3, WAV, MP4, etc.). The file you uploaded is not a valid music file.";
       }
-      if (url && !MUSIC_URL_PATTERNS.some(p => p.test(url))) {
+      if (url && !isFromDomain(url, MUSIC_DOMAINS)) {
         return "Invalid music URL. Only YouTube, Spotify, SoundCloud, Apple Music, Tidal, Deezer, Bandcamp, and Audiomack links are accepted.";
       }
       if (!file && !url) return "Please upload an audio file or paste a music platform URL.";
@@ -293,7 +302,7 @@ function validateModeInput(
 
     case "social":
       // ONLY accepts: social platform URL, OR screenshot (image), OR pasted text (posts/bio). No random URLs.
-      if (url && !SOCIAL_URL_PATTERNS.some(p => p.test(url))) {
+      if (url && !isFromDomain(url, SOCIAL_DOMAINS)) {
         return "Invalid social media URL. Only Instagram, Twitter/X, TikTok, Facebook, LinkedIn, Reddit, Threads, and Pinterest links are accepted.";
       }
       if (file && mime.startsWith("audio/")) {
