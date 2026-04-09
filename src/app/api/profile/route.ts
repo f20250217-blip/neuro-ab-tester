@@ -159,9 +159,10 @@ function parseAnalysisResponse(text: string) {
   };
 
   const extractSection = (key: string): string => {
-    const regex = new RegExp(`${key}:\\s*(.+?)(?=\\n[A-Z_]+:|$)`, "s");
+    // Match section headers that may be wrapped in ** markdown bold
+    const regex = new RegExp(`\\*{0,2}${key}:?\\*{0,2}[:\\s]*(.+?)(?=\\n\\*{0,2}[A-Z_]{3,}:?\\*{0,2}:|$)`, "s");
     const match = text.match(regex);
-    return match ? match[1].trim() : "";
+    return match ? match[1].trim().slice(0, 2000) : "";
   };
 
   const extractEmotions = () => {
