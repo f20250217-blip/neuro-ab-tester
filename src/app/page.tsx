@@ -100,6 +100,11 @@ const MODES: ModeConfig[] = [
 export default function Home() {
   const [state, setState] = useState<AppState>("home");
   const [mode, setMode] = useState<AnalysisMode>("ab-testing");
+  const [isMobile, setIsMobile] = useState(false);
+
+  useEffect(() => {
+    setIsMobile(/Android|iPhone|iPad|iPod|webOS|BlackBerry|Opera Mini/i.test(navigator.userAgent) || window.innerWidth < 768);
+  }, []);
 
   // AB testing states
   const [fileA, setFileA] = useState<File | null>(null);
@@ -380,7 +385,18 @@ export default function Home() {
           <section className="relative max-w-7xl mx-auto px-4 md:px-6">
             <div className="text-center pt-4 pb-2">
               <div className="relative -mx-6">
-                <HeroBrain />
+                {isMobile ? (
+                  <div className="w-full h-[300px] flex items-center justify-center relative overflow-hidden">
+                    <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-[55%] w-[280px] h-[220px]">
+                      <div className="absolute inset-0 rounded-full bg-[#2a6844]/40 blur-[60px] animate-pulse" />
+                      <div className="absolute top-[10%] left-[15%] w-[60%] h-[50%] rounded-full bg-[#cc8800]/25 blur-[50px] animate-pulse" style={{ animationDelay: "0.5s" }} />
+                      <div className="absolute bottom-[10%] right-[10%] w-[45%] h-[40%] rounded-full bg-[#ff6600]/20 blur-[40px] animate-pulse" style={{ animationDelay: "1s" }} />
+                      <div className="absolute top-[20%] right-[20%] w-[35%] h-[35%] rounded-full bg-[#7c6cf0]/15 blur-[35px] animate-pulse" style={{ animationDelay: "1.5s" }} />
+                    </div>
+                  </div>
+                ) : (
+                  <HeroBrain />
+                )}
                 <div className="absolute inset-x-0 bottom-0 h-32 sm:h-64 bg-gradient-to-t from-[#050508] via-[#050508]/80 to-transparent" />
               </div>
               <div className="relative -mt-12 sm:-mt-36 z-10 space-y-4 sm:space-y-5 px-2 sm:px-0">
@@ -1002,22 +1018,32 @@ export default function Home() {
       {state === "processing" && (
         <main className="fixed inset-0 top-[56px] overflow-hidden bg-[#050508] z-10">
           <div className="absolute inset-0 pointer-events-none h-[50vh] md:h-[60vh]">
-            <Brain3D
-              regions={[
-                { name: "L-Frontal", id: "lf", role: "", position: [-0.4, 0.3, 0.7], activation: 0.85, color: "#ffaa00" },
-                { name: "R-Frontal", id: "rf", role: "", position: [0.4, 0.3, 0.7], activation: 0.80, color: "#ffcc00" },
-                { name: "L-Parietal", id: "lp", role: "", position: [-0.5, 0.5, 0.0], activation: 0.82, color: "#ff8800" },
-                { name: "R-Parietal", id: "rp", role: "", position: [0.5, 0.5, 0.0], activation: 0.72, color: "#ddcc00" },
-                { name: "L-Motor", id: "lm", role: "", position: [-0.3, 0.6, 0.2], activation: 0.88, color: "#ff6600" },
-                { name: "R-Motor", id: "rm", role: "", position: [0.3, 0.6, 0.2], activation: 0.75, color: "#ffaa00" },
-                { name: "L-Temporal", id: "lt", role: "", position: [-0.8, -0.1, 0.2], activation: 0.62, color: "#88cc00" },
-                { name: "R-Temporal", id: "rt", role: "", position: [0.8, -0.1, 0.2], activation: 0.52, color: "#44aa66" },
-                { name: "Prefrontal", id: "pfc", role: "", position: [0, 0.2, 0.9], activation: 0.82, color: "#ffbb00" },
-              ]}
-              className="w-full h-full"
-              autoRotate
-              showParticles
-            />
+            {isMobile ? (
+              <div className="w-full h-full flex items-center justify-center relative">
+                <div className="w-[250px] h-[200px] relative">
+                  <div className="absolute inset-0 rounded-full bg-[#ffaa00]/20 blur-[50px] animate-pulse" />
+                  <div className="absolute top-[10%] left-[15%] w-[60%] h-[50%] rounded-full bg-[#ff6600]/25 blur-[40px] animate-pulse" style={{ animationDelay: "0.3s" }} />
+                  <div className="absolute bottom-[10%] right-[10%] w-[45%] h-[40%] rounded-full bg-[#88cc00]/20 blur-[35px] animate-pulse" style={{ animationDelay: "0.6s" }} />
+                </div>
+              </div>
+            ) : (
+              <Brain3D
+                regions={[
+                  { name: "L-Frontal", id: "lf", role: "", position: [-0.4, 0.3, 0.7], activation: 0.85, color: "#ffaa00" },
+                  { name: "R-Frontal", id: "rf", role: "", position: [0.4, 0.3, 0.7], activation: 0.80, color: "#ffcc00" },
+                  { name: "L-Parietal", id: "lp", role: "", position: [-0.5, 0.5, 0.0], activation: 0.82, color: "#ff8800" },
+                  { name: "R-Parietal", id: "rp", role: "", position: [0.5, 0.5, 0.0], activation: 0.72, color: "#ddcc00" },
+                  { name: "L-Motor", id: "lm", role: "", position: [-0.3, 0.6, 0.2], activation: 0.88, color: "#ff6600" },
+                  { name: "R-Motor", id: "rm", role: "", position: [0.3, 0.6, 0.2], activation: 0.75, color: "#ffaa00" },
+                  { name: "L-Temporal", id: "lt", role: "", position: [-0.8, -0.1, 0.2], activation: 0.62, color: "#88cc00" },
+                  { name: "R-Temporal", id: "rt", role: "", position: [0.8, -0.1, 0.2], activation: 0.52, color: "#44aa66" },
+                  { name: "Prefrontal", id: "pfc", role: "", position: [0, 0.2, 0.9], activation: 0.82, color: "#ffbb00" },
+                ]}
+                className="w-full h-full"
+                autoRotate
+                showParticles
+              />
+            )}
           </div>
 
           <div className="absolute inset-x-0 bottom-0" style={{ height: "55vh", background: "linear-gradient(to bottom, transparent 0%, #050508 50%)" }} />
@@ -1137,8 +1163,8 @@ export default function Home() {
           {activeTab === "overview" && (
             <div className="space-y-7 animate-float-up">
               <div className="grid grid-cols-1 lg:grid-cols-2 gap-7">
-                <BrainCard analysis={result.contentA} color="#7c6cf0" label="A" />
-                <BrainCard analysis={result.contentB} color="#00e8b0" label="B" />
+                <BrainCard analysis={result.contentA} color="#7c6cf0" label="A" mobile={isMobile} />
+                <BrainCard analysis={result.contentB} color="#00e8b0" label="B" mobile={isMobile} />
               </div>
               <div className="glass-card rounded-2xl p-7">
                 <h3 className="text-[10px] font-semibold text-[#4a4a68] uppercase tracking-[0.2em] mb-6">Head-to-Head</h3>
@@ -1387,7 +1413,7 @@ export default function Home() {
           {/* Profile Overview */}
           {activeTab === "overview" && (
             <div className="space-y-7 animate-float-up">
-              <BrainCard analysis={profileResult} color={currentMode.color} label="P" />
+              <BrainCard analysis={profileResult} color={currentMode.color} label="P" mobile={isMobile} />
               <div className="glass-card rounded-2xl p-7">
                 <h3 className="text-[10px] font-semibold text-[#4a4a68] uppercase tracking-[0.2em] mb-6">Neural Dimensions</h3>
                 <div className="space-y-4">
@@ -1541,7 +1567,7 @@ export default function Home() {
 
 /* ==================== Sub-components ==================== */
 
-function BrainCard({ analysis, color, label }: { analysis: NeuralAnalysis; color: string; label: string }) {
+function BrainCard({ analysis, color, label, mobile }: { analysis: NeuralAnalysis; color: string; label: string; mobile?: boolean }) {
   return (
     <div className="glass-card glass-card-hover rounded-2xl overflow-hidden">
       <div className="px-6 py-4 border-b border-[#1e1e30]/60 flex items-center justify-between">
@@ -1557,7 +1583,20 @@ function BrainCard({ analysis, color, label }: { analysis: NeuralAnalysis; color
         </div>
       </div>
       <div className="h-[220px] md:h-[300px] bg-[#050508] relative">
-        <Brain3D regions={analysis.regions} className="w-full h-full" showParticles />
+        {mobile ? (
+          <div className="w-full h-full flex items-center justify-center relative">
+            {analysis.regions.filter(r => r.activation > 0.5).slice(0, 3).map((r, i) => (
+              <div key={r.id} className="absolute rounded-full blur-[30px] animate-pulse" style={{
+                backgroundColor: `${r.color}40`,
+                width: `${80 + r.activation * 60}px`, height: `${60 + r.activation * 50}px`,
+                top: `${20 + i * 25}%`, left: `${15 + i * 20}%`,
+                animationDelay: `${i * 0.4}s`,
+              }} />
+            ))}
+          </div>
+        ) : (
+          <Brain3D regions={analysis.regions} className="w-full h-full" showParticles />
+        )}
         <div className="absolute bottom-3 left-3 right-3 flex flex-wrap gap-1.5">
           {analysis.regions.filter((r) => r.activation > 0.5).sort((a, b) => b.activation - a.activation).slice(0, 4).map((r) => (
             <span key={r.id} className="px-2.5 py-1 rounded-lg text-[9px] font-semibold bg-[#050508]/80 backdrop-blur-md border border-white/5" style={{ color: r.color }}>
