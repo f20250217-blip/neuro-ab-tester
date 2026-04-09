@@ -54,7 +54,7 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
     openGraph: {
       title,
       description,
-      url: `https://neurotest.live/result/${id}`,
+      url: `https://www.neurotest.live/result/${id}`,
       siteName: "NeuroTest AI",
       images: [{ url: ogImageUrl, width: 1200, height: 630, alt: `${arch.name} — ${score}/100 Neural Score` }],
       type: "website",
