@@ -377,6 +377,41 @@ function Particles() {
 }
 
 /* ============================================
+   ERROR BOUNDARY — catches WebGL/Three.js crashes
+   ============================================ */
+import React from "react";
+
+class Brain3DErrorBoundary extends React.Component<
+  { children: React.ReactNode; className?: string },
+  { hasError: boolean }
+> {
+  constructor(props: { children: React.ReactNode; className?: string }) {
+    super(props);
+    this.state = { hasError: false };
+  }
+  static getDerivedStateFromError() {
+    return { hasError: true };
+  }
+  render() {
+    if (this.state.hasError) {
+      return (
+        <div className={this.props.className} style={{ contain: "layout style paint" }}>
+          <div className="w-full h-full flex items-center justify-center relative overflow-hidden">
+            <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-[55%] w-[280px] h-[220px] sm:w-[360px] sm:h-[280px]">
+              <div className="absolute inset-0 rounded-full bg-[#2a6844]/40 blur-[60px] animate-pulse" />
+              <div className="absolute top-[10%] left-[15%] w-[60%] h-[50%] rounded-full bg-[#cc8800]/25 blur-[50px] animate-pulse" />
+              <div className="absolute bottom-[10%] right-[10%] w-[45%] h-[40%] rounded-full bg-[#ff6600]/20 blur-[40px] animate-pulse" />
+              <div className="absolute top-[20%] right-[20%] w-[35%] h-[35%] rounded-full bg-[#7c6cf0]/15 blur-[35px] animate-pulse" />
+            </div>
+          </div>
+        </div>
+      );
+    }
+    return this.props.children;
+  }
+}
+
+/* ============================================
    MAIN COMPONENT
    ============================================ */
 interface Brain3DProps {
@@ -394,6 +429,7 @@ export default function Brain3D({ regions, className = "", autoRotate = true, sh
   }, []);
 
   return (
+    <Brain3DErrorBoundary className={className}>
     <div className={className} style={{ contain: "layout style paint" }}>
       <Canvas
         camera={{ position: [0, 1.2, isMobile ? 4.5 : 3.5], fov: isMobile ? 48 : 38 }}
@@ -439,6 +475,7 @@ export default function Brain3D({ regions, className = "", autoRotate = true, sh
         )}
       </Canvas>
     </div>
+    </Brain3DErrorBoundary>
   );
 }
 
