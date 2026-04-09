@@ -1,17 +1,18 @@
 import type { Metadata } from "next";
 import Link from "next/link";
+import { decodeResult } from "@/lib/result-codec";
 
 /* ── Archetype lookup ── */
 
 function getArchetype(type: string) {
   const map: Record<string, { name: string; emoji: string; desc: string }> = {
-    empath:     { name: "The Empath",     emoji: "\u2764\uFE0F\u200D\uD83D\uDD25", desc: "Rare ability to forge deep emotional bonds through radical authenticity" },
-    catalyst:   { name: "The Catalyst",   emoji: "\u26A1",       desc: "Ignites powerful emotional responses that drive action" },
-    architect:  { name: "The Architect",  emoji: "\uD83E\uDDE0", desc: "Creates lasting neural imprints others can't replicate" },
-    closer:     { name: "The Closer",     emoji: "\uD83C\uDFAF", desc: "Wired for conversion \u2014 triggers action at the subconscious level" },
-    magnet:     { name: "The Magnet",     emoji: "\uD83D\uDD2E", desc: "Impossible to ignore \u2014 cuts through the noise" },
-    oracle:     { name: "The Oracle",     emoji: "\uD83D\uDEE1\uFE0F", desc: "Radiates authority \u2014 people believe before you speak" },
-    strategist: { name: "The Strategist", emoji: "\u265F\uFE0F", desc: "No weaknesses detected \u2014 a rare balanced neural signature" },
+    empath:     { name: "The Empath",     emoji: "❤️‍🔥", desc: "Rare ability to forge deep emotional bonds through radical authenticity" },
+    catalyst:   { name: "The Catalyst",   emoji: "⚡",       desc: "Ignites powerful emotional responses that drive action" },
+    architect:  { name: "The Architect",  emoji: "🧠", desc: "Creates lasting neural imprints others can't replicate" },
+    closer:     { name: "The Closer",     emoji: "🎯", desc: "Wired for conversion — triggers action at the subconscious level" },
+    magnet:     { name: "The Magnet",     emoji: "🔮", desc: "Impossible to ignore — cuts through the noise" },
+    oracle:     { name: "The Oracle",     emoji: "🛡️", desc: "Radiates authority — people believe before you speak" },
+    strategist: { name: "The Strategist", emoji: "♟️", desc: "No weaknesses detected — a rare balanced neural signature" },
   };
   return map[type?.toLowerCase()] || map.strategist;
 }
@@ -27,20 +28,22 @@ function getRank(score: number) {
 
 /* ── Dynamic OG metadata ── */
 
-type Props = { searchParams: Promise<{ score?: string; type?: string; insight?: string; mode?: string }> };
+type Props = { params: Promise<{ id: string }> };
 
-export async function generateMetadata({ searchParams }: Props): Promise<Metadata> {
-  const params = await searchParams;
-  const score = Math.min(100, Math.max(0, parseInt(params.score || "50", 10)));
-  const type = params.type || "strategist";
-  const insight = params.insight || "";
-  const mode = params.mode || "Analysis";
+export async function generateMetadata({ params }: Props): Promise<Metadata> {
+  const { id } = await params;
+  const data = decodeResult(id);
+  if (!data) {
+    return { title: "NeuroTest AI — Decode Your Brain" };
+  }
+
+  const { score, type, mode, insight } = data;
   const arch = getArchetype(type);
   const rank = getRank(score);
 
-  const title = `${arch.name} ${arch.emoji} \u2014 ${score}/100 | NeuroTest AI`;
+  const title = `${arch.name} ${arch.emoji} — ${score}/100 | NeuroTest AI`;
   const description = insight
-    ? `"${insight.slice(0, 155)}" \u2014 ${rank}. Decode your brain free at neurotest.live`
+    ? `"${insight.slice(0, 155)}" — ${rank}. Decode your brain free at neurotest.live`
     : `Brain score: ${score}/100 (${rank}). ${arch.desc}. Decode your brain free at neurotest.live`;
 
   const ogImageUrl = `/api/og?score=${score}&type=${encodeURIComponent(type)}&insight=${encodeURIComponent(insight.slice(0, 150))}&mode=${encodeURIComponent(mode)}`;
@@ -51,14 +54,14 @@ export async function generateMetadata({ searchParams }: Props): Promise<Metadat
     openGraph: {
       title,
       description,
-      url: `https://neurotest.live/result?score=${score}&type=${type}`,
+      url: `https://neurotest.live/result/${id}`,
       siteName: "NeuroTest AI",
-      images: [{ url: ogImageUrl, width: 1200, height: 630, alt: `${arch.name} \u2014 ${score}/100 Neural Score` }],
+      images: [{ url: ogImageUrl, width: 1200, height: 630, alt: `${arch.name} — ${score}/100 Neural Score` }],
       type: "website",
     },
     twitter: {
       card: "summary_large_image",
-      title: `${arch.name} ${arch.emoji} \u2014 ${score}/100`,
+      title: `${arch.name} ${arch.emoji} — ${score}/100`,
       description,
       images: [ogImageUrl],
     },
@@ -67,18 +70,25 @@ export async function generateMetadata({ searchParams }: Props): Promise<Metadat
 
 /* ── Page component ── */
 
-export default async function ResultPage({ searchParams }: Props) {
-  const params = await searchParams;
-  const score = Math.min(100, Math.max(0, parseInt(params.score || "50", 10)));
-  const type = params.type || "strategist";
-  const mode = params.mode || "Analysis";
+export default async function ResultPage({ params }: Props) {
+  const { id } = await params;
+  const data = decodeResult(id);
+
+  if (!data) {
+    return (
+      <div className="min-h-screen bg-[#050508] flex flex-col items-center justify-center px-4 py-12">
+        <h1 className="text-2xl font-bold text-[#f0f0f8] mb-4">Result not found</h1>
+        <Link href="/" className="text-[#7c6cf0] hover:underline">Take the test →</Link>
+      </div>
+    );
+  }
+
+  const { score, type, mode, insight } = data;
   const arch = getArchetype(type);
   const rank = getRank(score);
-  const insight = params.insight || arch.desc;
 
   return (
     <div className="min-h-screen bg-[#050508] flex flex-col items-center justify-center px-4 py-12">
-      {/* Result card (static, matches OG image design) */}
       <div
         className="w-full max-w-lg relative overflow-hidden rounded-3xl"
         style={{ background: "linear-gradient(145deg, #0c0c18 0%, #08080f 50%, #060610 100%)", border: "1px solid rgba(124,108,240,0.12)" }}
@@ -106,7 +116,7 @@ export default async function ResultPage({ searchParams }: Props) {
           {/* Insight */}
           <div className="rounded-xl p-4 mb-7 relative overflow-hidden" style={{ background: "linear-gradient(135deg, rgba(124,108,240,0.06), rgba(0,232,176,0.03))", border: "1px solid rgba(124,108,240,0.1)" }}>
             <div className="absolute top-0 left-0 w-1 h-full rounded-r bg-gradient-to-b from-[#7c6cf0] to-[#00e8b0]" />
-            <p className="text-sm text-[#c4bfff] leading-relaxed pl-3 italic">&ldquo;{insight}&rdquo;</p>
+            <p className="text-sm text-[#c4bfff] leading-relaxed pl-3 italic">&ldquo;{insight || arch.desc}&rdquo;</p>
           </div>
 
           {/* CTA */}

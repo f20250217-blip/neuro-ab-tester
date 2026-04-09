@@ -3,6 +3,7 @@
 import { useRef, useState, useCallback, useEffect } from "react";
 import { toPng } from "html-to-image";
 import { NeuralAnalysis } from "@/lib/neuro-engine";
+import { encodeResult } from "@/lib/result-codec";
 
 /* ══════════════════════════════════════════════════════════
    VIRALITY ENGINE — personality insights, social proof,
@@ -127,10 +128,11 @@ export default function ShareCard({ analysis, mode, color }: ShareCardProps) {
     { label: "Focus", value: analysis.attentionCapture, emoji: "\uD83D\uDC41\uFE0F" },
   ];
 
-  /* ── Result share URL (triggers OG preview on all platforms) ── */
+  /* ── Result share URL (clean path — triggers OG preview on all platforms) ── */
 
   const archKey = arch.name.toLowerCase().replace("the ", "");
-  const resultUrl = `https://neurotest.live/result?score=${score}&type=${encodeURIComponent(archKey)}&mode=${encodeURIComponent(mode)}&insight=${encodeURIComponent(insight.slice(0, 150))}`;
+  const resultId = encodeResult({ score, type: archKey, mode, insight });
+  const resultUrl = `https://neurotest.live/result/${resultId}`;
 
   /* ── Share text — includes link with OG preview ── */
 
