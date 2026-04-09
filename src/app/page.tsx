@@ -119,11 +119,17 @@ export default function Home() {
   // Shared states
   const [error, setError] = useState<string | null>(null);
   const [progress, setProgress] = useState(0);
-  const [activeTab, setActiveTab] = useState<string>("overview");
+  const [activeTab, setActiveTab] = useState<string>("performance");
 
-  // Hero scan status text
-  const [scanStatus, setScanStatus] = useState("Analyzing attention patterns...");
+  // Hero cinematic phase state
+  const [scanStatus, setScanStatus] = useState("Initializing neural scan...");
+  const [heroPhase, setHeroPhase] = useState("calm");
+  const [insightLabel, setInsightLabel] = useState<string | null>(null);
   const handleScanStatus = useCallback((msg: string) => setScanStatus(msg), []);
+  const handlePhaseChange = useCallback((phase: string, label: string | null) => {
+    setHeroPhase(phase);
+    setInsightLabel(label);
+  }, []);
 
   // Scroll reveal observer — wait a tick for DOM to paint
   const observerRef = useRef<IntersectionObserver | null>(null);
@@ -336,7 +342,7 @@ export default function Home() {
     setProfileFile(null); setProfileText(""); setProfileUrl("");
     setResult(null); setProfileResult(null);
     setError(null); setProgress(0);
-    setActiveTab("overview");
+    setActiveTab("performance");
   };
 
   return (
@@ -384,13 +390,37 @@ export default function Home() {
           <section className="relative max-w-7xl mx-auto px-4 md:px-6">
             <div className="text-center pt-4 pb-2">
               <div className="relative -mx-6">
-                <HeroBrain onStatusChange={handleScanStatus} />
+                <HeroBrain onStatusChange={handleScanStatus} onPhaseChange={handlePhaseChange} />
                 <div className="absolute inset-x-0 bottom-0 h-32 sm:h-64 bg-gradient-to-t from-[#050508] via-[#050508]/80 to-transparent" />
+
+                {/* INSIGHT overlay — bold label */}
+                {heroPhase === "insight" && insightLabel && (
+                  <div className="absolute inset-0 flex items-center justify-center pointer-events-none z-20">
+                    <div key={insightLabel} className="animate-[insightReveal_0.6s_cubic-bezier(0.16,1,0.3,1)] text-center">
+                      <div className="text-lg sm:text-2xl md:text-3xl font-bold font-mono tracking-[0.15em] text-red-400 drop-shadow-[0_0_20px_rgba(255,60,60,0.5)]">
+                        {insightLabel}
+                      </div>
+                      <div className="mt-1 h-[2px] mx-auto bg-gradient-to-r from-transparent via-red-500 to-transparent animate-pulse" style={{ width: "80%" }} />
+                    </div>
+                  </div>
+                )}
+
+                {/* Overload edge vignette */}
+                {heroPhase === "overload" && (
+                  <div className="absolute inset-0 pointer-events-none z-10 rounded-lg" style={{
+                    boxShadow: "inset 0 0 80px 20px rgba(255,40,40,0.08)",
+                    animation: "overloadFlash 0.5s ease-in-out infinite alternate",
+                  }} />
+                )}
               </div>
               <div className="relative -mt-12 sm:-mt-36 z-10 space-y-4 sm:space-y-5 px-2 sm:px-0">
                 {/* Live scan status */}
-                <div className="flex items-center justify-center gap-2 text-xs sm:text-sm text-[#7c6cf0]/80 font-mono tracking-wide">
-                  <span className="inline-block w-1.5 h-1.5 rounded-full bg-[#7c6cf0] animate-pulse" />
+                <div className={`flex items-center justify-center gap-2 text-xs sm:text-sm font-mono tracking-wide transition-colors duration-500 ${
+                  heroPhase === "overload" ? "text-red-400/90" : heroPhase === "insight" ? "text-red-300/80" : "text-[#7c6cf0]/80"
+                }`}>
+                  <span className={`inline-block w-1.5 h-1.5 rounded-full animate-pulse ${
+                    heroPhase === "overload" ? "bg-red-500" : heroPhase === "insight" ? "bg-red-400" : "bg-[#7c6cf0]"
+                  }`} />
                   <span key={scanStatus} className="animate-[fadeSlideIn_0.4s_ease-out]">{scanStatus}</span>
                 </div>
 
@@ -1679,7 +1709,7 @@ function NeuroCard({ analysis, color, mode }: { analysis: NeuralAnalysis; color:
             { label: "Action", value: analysis.decisionTrigger },
           ].map((m) => (
             <div key={m.label} className="text-center">
-              <div className="text-lg font-black tabular-nums text-[#f0f0f8]">{m.value.toFixed(1)}</div>
+              <div className="text-lg font-black tabular-nums text-[#f0f0f8]">{(m.value ?? 0).toFixed(1)}</div>
               <div className="text-[9px] text-[#4a4a68] font-semibold uppercase tracking-wider mt-0.5">{m.label}</div>
             </div>
           ))}

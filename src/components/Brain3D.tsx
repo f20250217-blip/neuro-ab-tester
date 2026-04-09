@@ -18,24 +18,46 @@ const INFLUENCE_SOURCES = [
   { id: "screen", icon: "▣", label: "Screen", targetRegions: ["acc", "pfc", "motor"],               orbitRadius: 2.2, orbitSpeed: -0.11, orbitTilt: 0.6, heightOffset: 0.0,  color: "#8b5cf6", diveDelay: 12.5 },
 ];
 
-const SCAN_MESSAGES = [
-  "Analyzing attention patterns...",
-  "Detecting emotional triggers...",
-  "Mapping dopamine response...",
-  "Scanning memory encoding...",
-  "Measuring reward sensitivity...",
-  "Tracing neural pathways...",
+/* ============================================
+   CINEMATIC SEQUENCE — 4 phases, 10s loop
+   ============================================ */
+const CYCLE = 10; // total loop duration
+const PHASE_TIMINGS = [
+  { start: 0, end: 2.5, name: "calm" },      // slow rotate, minimal
+  { start: 2.5, end: 5, name: "influence" },  // icons appear, approach
+  { start: 5, end: 7.5, name: "overload" },   // rapid hits, flicker
+  { start: 7.5, end: 10, name: "insight" },   // freeze, spotlight, label
+] as const;
+
+type PhaseName = typeof PHASE_TIMINGS[number]["name"];
+
+const INSIGHT_LABELS = [
+  "ATTENTION HIJACKED",
+  "DOPAMINE LOOP DETECTED",
+  "EMOTIONAL OVERRIDE ACTIVE",
+  "MEMORY MANIPULATION FOUND",
 ];
 
-// Full dive cycle = 15s per icon, staggered
-const DIVE_CYCLE = 15;
-const DIVE_DURATION = 2.5; // seconds to dive in + pulse + return
+const INSIGHT_REGIONS = ["acc", "nac", "amygdala", "hippocampus"]; // matched to labels
+
+function getPhase(t: number): { name: PhaseName; progress: number; cycleIndex: number } {
+  const cycleIndex = Math.floor(t / CYCLE);
+  const ct = t % CYCLE;
+  for (const p of PHASE_TIMINGS) {
+    if (ct >= p.start && ct < p.end) {
+      return { name: p.name, progress: (ct - p.start) / (p.end - p.start), cycleIndex };
+    }
+  }
+  return { name: "calm", progress: 0, cycleIndex };
+}
 
 interface InfluenceState {
   positions: THREE.Vector3[];
   nearRegions: Map<string, number>;
   activePulses: { center: THREE.Vector3; color: THREE.Color; time: number }[];
-  scanPhase: number; // 0-1 progress of current scan sweep
+  phase: PhaseName;
+  phaseProgress: number;
+  cycleIndex: number;
 }
 
 /* ============================================
@@ -69,6 +91,9 @@ const fragShader = `
   uniform vec3 uPulseCenter;
   uniform float uPulseRadius;
   uniform vec3 uPulseColor;
+  uniform float uOverload;
+  uniform vec3 uSpotlightPos;
+  uniform float uSpotlightIntensity;
 
   void main() {
     vec3 viewDir = normalize(uCamPos - vWorldPos);
@@ -104,16 +129,28 @@ const fragShader = `
     float wave = sin(uTime * 2.0 + vPos.x * 3.0 + vPos.z * 2.0) * 0.015;
     col += wave * vColor;
 
-    // Scan line effect — glowing horizontal band
+    // Scan line effect
     float scanDist = abs(vPos.y - uScanY);
     float scanLine = smoothstep(0.15, 0.0, scanDist) * uScanIntensity;
     col += vec3(0.3, 0.6, 1.0) * scanLine * 0.4;
     col += vColor * scanLine * 0.3;
 
-    // Pulse wave — expanding ring from influence hit
+    // Pulse wave
     float pulseDist = distance(vPos, uPulseCenter);
     float pulseRing = smoothstep(0.15, 0.0, abs(pulseDist - uPulseRadius)) * step(0.01, uPulseRadius);
     col += uPulseColor * pulseRing * 0.5;
+
+    // Overload — brightness boost + rapid flicker
+    float flicker = 1.0 + uOverload * (0.3 + 0.2 * sin(uTime * 25.0) * sin(uTime * 17.0));
+    col *= flicker;
+    // Add overload rim glow
+    col += rimColor * uOverload * 0.6;
+
+    // Spotlight — single region highlight during INSIGHT
+    float spotDist = distance(vPos, uSpotlightPos);
+    float spot = smoothstep(0.8, 0.0, spotDist) * uSpotlightIntensity;
+    col += vec3(1.0, 0.95, 0.8) * spot * 0.5;
+    col = mix(col, col * 0.4, uSpotlightIntensity * 0.3 * smoothstep(0.0, 1.5, spotDist));
 
     gl_FragColor = vec4(col, 0.95);
   }
@@ -199,43 +236,74 @@ function BrainMesh({ regions, autoRotate, isMobile, influenceRef }: { regions: B
     uPulseCenter: { value: new THREE.Vector3(0, 0, 0) },
     uPulseRadius: { value: 0 },
     uPulseColor: { value: new THREE.Vector3(1, 1, 1) },
+    uOverload: { value: 0 },
+    uSpotlightPos: { value: new THREE.Vector3(0, 0, 0) },
+    uSpotlightIntensity: { value: 0 },
   }), []);
 
+  // Region lookup for spotlight
+  const regionMap = useMemo(() => {
+    const m = new Map<string, THREE.Vector3>();
+    for (const r of regions) m.set(r.id, new THREE.Vector3(...r.position));
+    return m;
+  }, [regions]);
+
   useFrame((state) => {
+    const t = state.clock.elapsedTime;
+    const { name: phase, progress, cycleIndex } = getPhase(t);
+
     if (groupRef.current) {
-      if (autoRotate) groupRef.current.rotation.y += 0.002;
+      // Phase-driven rotation speed
+      const rotSpeeds: Record<PhaseName, number> = { calm: 0.001, influence: 0.003, overload: 0.008, insight: 0 };
+      if (autoRotate) groupRef.current.rotation.y += rotSpeeds[phase];
       if (!isMobile) {
-        const targetX = state.pointer.y * 0.06;
-        const targetZ = -state.pointer.x * 0.06;
+        const tiltScale = phase === "insight" ? 0.02 : 0.06;
+        const targetX = state.pointer.y * tiltScale;
+        const targetZ = -state.pointer.x * tiltScale;
         groupRef.current.rotation.x += (targetX - groupRef.current.rotation.x) * 0.03;
         groupRef.current.rotation.z += (targetZ - groupRef.current.rotation.z) * 0.03;
       }
     }
     if (matRef.current) {
       const u = matRef.current.uniforms;
-      u.uTime.value = state.clock.elapsedTime;
+      u.uTime.value = t;
       u.uCamPos.value.copy(state.camera.position);
 
-      // Scan sweep — every 8 seconds, scan Y from -2 to +2 over 2s
-      const scanCycle = 8;
-      const scanDuration = 2;
-      const scanT = state.clock.elapsedTime % scanCycle;
-      if (scanT < scanDuration) {
-        const progress = scanT / scanDuration;
+      // Scan sweep during INFLUENCE phase
+      if (phase === "influence") {
         u.uScanY.value = -2 + progress * 4;
-        u.uScanIntensity.value = Math.sin(progress * Math.PI); // fade in/out
+        u.uScanIntensity.value = Math.sin(progress * Math.PI);
       } else {
-        u.uScanIntensity.value = Math.max(0, u.uScanIntensity.value - 0.05);
+        u.uScanIntensity.value = Math.max(0, u.uScanIntensity.value - 0.08);
+      }
+
+      // Overload flicker
+      if (phase === "overload") {
+        const ramp = Math.min(1, progress * 2); // ramp up in first half
+        u.uOverload.value += (ramp * 0.7 - u.uOverload.value) * 0.1;
+      } else {
+        u.uOverload.value *= 0.9;
+      }
+
+      // Insight spotlight
+      if (phase === "insight") {
+        const spotRegionId = INSIGHT_REGIONS[cycleIndex % INSIGHT_REGIONS.length];
+        const spotPos = regionMap.get(spotRegionId);
+        if (spotPos) u.uSpotlightPos.value.copy(spotPos);
+        const fadeIn = Math.min(1, progress * 4); // snap on
+        u.uSpotlightIntensity.value += (fadeIn - u.uSpotlightIntensity.value) * 0.15;
+      } else {
+        u.uSpotlightIntensity.value *= 0.85;
       }
 
       // Pulse from influence hits
       const inf = influenceRef?.current;
       if (inf && inf.activePulses.length > 0) {
         const pulse = inf.activePulses[0];
-        const age = state.clock.elapsedTime - pulse.time;
+        const age = t - pulse.time;
         if (age < 1.5) {
           u.uPulseCenter.value.copy(pulse.center);
-          u.uPulseRadius.value = age * 1.2; // expanding ring
+          u.uPulseRadius.value = age * 1.2;
           u.uPulseColor.value.set(pulse.color.r, pulse.color.g, pulse.color.b);
         } else {
           u.uPulseRadius.value = Math.max(0, u.uPulseRadius.value - 0.1);
@@ -432,7 +500,7 @@ function RegionNodes({ regions, influenceRef }: { regions: BrainRegion[]; influe
 }
 
 /* ============================================
-   INFLUENCE ICONS — orbit + dive-in animation
+   INFLUENCE ICONS — cinematic phase-driven
    ============================================ */
 function InfluenceIcons({ regions, influenceRef }: { regions: BrainRegion[]; influenceRef: React.MutableRefObject<InfluenceState> }) {
   const groupRef = useRef<THREE.Group>(null);
@@ -444,7 +512,6 @@ function InfluenceIcons({ regions, influenceRef }: { regions: BrainRegion[]; inf
       canvas.height = 96;
       const ctx = canvas.getContext("2d")!;
       ctx.clearRect(0, 0, 96, 96);
-      // Outer glow
       const gradient = ctx.createRadialGradient(48, 48, 0, 48, 48, 46);
       gradient.addColorStop(0, src.color + "cc");
       gradient.addColorStop(0.35, src.color + "66");
@@ -454,7 +521,6 @@ function InfluenceIcons({ regions, influenceRef }: { regions: BrainRegion[]; inf
       ctx.beginPath();
       ctx.arc(48, 48, 46, 0, Math.PI * 2);
       ctx.fill();
-      // Icon
       ctx.fillStyle = "#ffffff";
       ctx.font = "bold 36px sans-serif";
       ctx.textAlign = "center";
@@ -474,12 +540,12 @@ function InfluenceIcons({ regions, influenceRef }: { regions: BrainRegion[]; inf
     return m;
   }, [regions]);
 
-  // Smooth easing
-  const easeInOutCubic = (t: number) => t < 0.5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2;
+  const ease = (t: number) => t < 0.5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2;
 
   useFrame((state) => {
     if (!groupRef.current) return;
     const t = state.clock.elapsedTime;
+    const { name: phase, progress } = getPhase(t);
     const nearRegions = new Map<string, number>();
     const positions: THREE.Vector3[] = [];
 
@@ -487,9 +553,11 @@ function InfluenceIcons({ regions, influenceRef }: { regions: BrainRegion[]; inf
       const src = INFLUENCE_SOURCES[i];
       if (!src) return;
       const sprite = child as THREE.Sprite;
+      const mat = sprite.material as THREE.SpriteMaterial;
 
-      // Orbital position
-      const angle = t * src.orbitSpeed;
+      // Orbital position (always computed)
+      const speed = phase === "overload" ? src.orbitSpeed * 3 : src.orbitSpeed;
+      const angle = t * speed;
       const ox = Math.cos(angle) * src.orbitRadius;
       const oz = Math.sin(angle) * src.orbitRadius;
       const oy = src.heightOffset + Math.sin(angle * 0.7) * 0.3;
@@ -497,94 +565,100 @@ function InfluenceIcons({ regions, influenceRef }: { regions: BrainRegion[]; inf
       const sinT = Math.sin(src.orbitTilt);
       const orbitPos = new THREE.Vector3(ox, oy * cosT - oz * sinT, oy * sinT + oz * cosT);
 
-      // Dive-in cycle: every DIVE_CYCLE seconds, offset by diveDelay
-      const cycleTime = (t - src.diveDelay + DIVE_CYCLE * 10) % DIVE_CYCLE;
-      const diveProgress = Math.max(0, Math.min(1, cycleTime / DIVE_DURATION));
+      const targetPos = regionMap.get(src.targetRegions[0]) || new THREE.Vector3();
 
-      // Target = first target region position
-      const targetRegionId = src.targetRegions[0];
-      const targetPos = regionMap.get(targetRegionId) || new THREE.Vector3(0, 0, 0);
+      if (phase === "calm") {
+        // Hidden — scale to 0, far away
+        child.position.copy(orbitPos.multiplyScalar(1.5));
+        sprite.scale.setScalar(0.01);
+        mat.opacity = 0;
+      } else if (phase === "influence") {
+        // Staggered appearance: icon i appears at progress = i/6
+        const appearAt = i / INFLUENCE_SOURCES.length;
+        const localP = Math.max(0, (progress - appearAt) / (1 - appearAt));
 
-      let finalPos: THREE.Vector3;
-      let scale = 0.4;
-      let opacity = 0.75;
+        if (localP <= 0) {
+          child.position.copy(orbitPos.multiplyScalar(1.5));
+          sprite.scale.setScalar(0.01);
+          mat.opacity = 0;
+        } else if (localP < 0.5) {
+          // Appear at orbit, fade in
+          const fadeIn = ease(localP * 2);
+          child.position.copy(orbitPos);
+          sprite.scale.setScalar(0.35 * fadeIn);
+          mat.opacity = fadeIn * 0.8;
+        } else {
+          // Dive toward brain
+          const diveP = ease((localP - 0.5) * 2);
+          child.position.lerpVectors(orbitPos, targetPos, diveP);
+          sprite.scale.setScalar(0.35 - diveP * 0.1);
+          mat.opacity = 0.8 + diveP * 0.2;
 
-      if (diveProgress > 0 && diveProgress < 1) {
-        // Phase 1 (0-0.4): dive toward brain
-        // Phase 2 (0.4-0.6): impact — hold near target
-        // Phase 3 (0.6-1.0): return to orbit
-        if (diveProgress < 0.4) {
-          const p = easeInOutCubic(diveProgress / 0.4);
-          finalPos = orbitPos.clone().lerp(targetPos, p);
-          scale = 0.4 - p * 0.15; // shrink as it dives
-          opacity = 0.75 + p * 0.25;
-        } else if (diveProgress < 0.6) {
-          // Impact hold — pulse
-          const impactT = (diveProgress - 0.4) / 0.2;
-          finalPos = targetPos.clone();
-          scale = 0.25 + Math.sin(impactT * Math.PI) * 0.15;
-          opacity = 1.0;
-
-          // Trigger pulse on first frame of impact
-          if (impactT < 0.15 && influenceRef.current.activePulses.length < 3) {
-            const lastPulse = influenceRef.current.activePulses[influenceRef.current.activePulses.length - 1];
-            if (!lastPulse || t - lastPulse.time > 0.3) {
-              influenceRef.current.activePulses.push({
-                center: targetPos.clone(),
-                color: new THREE.Color(src.color),
-                time: t,
-              });
+          // Trigger pulse on arrival
+          if (diveP > 0.9 && diveP < 0.98) {
+            const last = influenceRef.current.activePulses[influenceRef.current.activePulses.length - 1];
+            if (!last || t - last.time > 0.2) {
+              influenceRef.current.activePulses.push({ center: targetPos.clone(), color: new THREE.Color(src.color), time: t });
             }
           }
 
-          // Max proximity during impact
-          for (const rid of src.targetRegions) {
-            nearRegions.set(rid, 1.0);
+          if (diveP > 0.5) {
+            for (const rid of src.targetRegions) nearRegions.set(rid, diveP);
           }
+        }
+      } else if (phase === "overload") {
+        // Rapid orbit + repeated dives
+        const rapidCycle = (progress * 3 + i * 0.4) % 1; // fast cycle
+        if (rapidCycle < 0.6) {
+          // Orbit fast
+          child.position.copy(orbitPos);
+          sprite.scale.setScalar(0.3 + Math.sin(t * 8 + i) * 0.05);
+          mat.opacity = 0.7 + Math.sin(t * 12 + i * 2) * 0.2;
         } else {
-          const p = easeInOutCubic((diveProgress - 0.6) / 0.4);
-          finalPos = targetPos.clone().lerp(orbitPos, p);
-          scale = 0.25 + p * 0.15;
-          opacity = 1.0 - p * 0.25;
+          // Rapid dive
+          const dP = ease((rapidCycle - 0.6) / 0.4);
+          child.position.lerpVectors(orbitPos, targetPos, dP);
+          sprite.scale.setScalar(0.25);
+          mat.opacity = 1.0;
+
+          // Trigger rapid pulses
+          if (dP > 0.85) {
+            const last = influenceRef.current.activePulses[influenceRef.current.activePulses.length - 1];
+            if (!last || t - last.time > 0.15) {
+              influenceRef.current.activePulses.push({ center: targetPos.clone(), color: new THREE.Color(src.color), time: t });
+            }
+          }
+          for (const rid of src.targetRegions) nearRegions.set(rid, Math.max(nearRegions.get(rid) || 0, dP));
         }
       } else {
-        finalPos = orbitPos;
-        // Subtle bob
-        finalPos.y += Math.sin(t * 1.5 + i) * 0.05;
-      }
+        // INSIGHT — freeze near target, dim non-spotlight icons
+        const spotIdx = influenceRef.current.cycleIndex % INSIGHT_REGIONS.length;
+        const isSpotlit = src.targetRegions.includes(INSIGHT_REGIONS[spotIdx]);
+        child.position.copy(targetPos.clone().add(orbitPos.normalize().multiplyScalar(0.4)));
+        sprite.scale.setScalar(isSpotlit ? 0.4 + Math.sin(t * 2) * 0.05 : 0.15);
+        mat.opacity = isSpotlit ? 1.0 : 0.15;
 
-      child.position.copy(finalPos);
-      sprite.scale.setScalar(scale);
-      (sprite.material as THREE.SpriteMaterial).opacity = opacity;
-      positions.push(finalPos.clone());
-
-      // Proximity for non-diving state
-      if (diveProgress === 0 || diveProgress >= 1) {
-        for (const targetId of src.targetRegions) {
-          const regionPos = regionMap.get(targetId);
-          if (!regionPos) continue;
-          const dist = child.position.distanceTo(regionPos);
-          const proximity = Math.max(0, 1 - dist / 3.5);
-          const existing = nearRegions.get(targetId) || 0;
-          if (proximity > existing) nearRegions.set(targetId, proximity);
+        if (isSpotlit) {
+          for (const rid of src.targetRegions) nearRegions.set(rid, 1.0);
         }
       }
+
+      positions.push(child.position.clone());
     });
 
+    const { cycleIndex } = getPhase(t);
     influenceRef.current.positions = positions;
     influenceRef.current.nearRegions = nearRegions;
-
-    // Scan phase for external sync
-    const scanCycle = 8;
-    const scanT = t % scanCycle;
-    influenceRef.current.scanPhase = scanT < 2 ? scanT / 2 : 0;
+    influenceRef.current.phase = phase;
+    influenceRef.current.phaseProgress = progress;
+    influenceRef.current.cycleIndex = cycleIndex;
   });
 
   return (
     <group ref={groupRef}>
       {INFLUENCE_SOURCES.map((src, i) => (
-        <sprite key={src.id} scale={[0.4, 0.4, 1]}>
-          <spriteMaterial map={textures[i]} transparent opacity={0.75} depthWrite={false} blending={THREE.AdditiveBlending} />
+        <sprite key={src.id} scale={[0.01, 0.01, 1]}>
+          <spriteMaterial map={textures[i]} transparent opacity={0} depthWrite={false} blending={THREE.AdditiveBlending} />
         </sprite>
       ))}
     </group>
@@ -733,24 +807,30 @@ function Particles({ enhanced }: { enhanced?: boolean }) {
 }
 
 /* ============================================
-   SCAN PLANE — sweeping horizontal glow
+   SCAN PLANE — phase-synced sweep
    ============================================ */
 function ScanPlane() {
   const meshRef = useRef<THREE.Mesh>(null);
 
   useFrame((state) => {
     if (!meshRef.current) return;
-    const scanCycle = 8;
-    const scanDuration = 2;
-    const scanT = state.clock.elapsedTime % scanCycle;
-    if (scanT < scanDuration) {
-      const progress = scanT / scanDuration;
+    const { name: phase, progress } = getPhase(state.clock.elapsedTime);
+    const mat = meshRef.current.material as THREE.MeshBasicMaterial;
+
+    if (phase === "influence") {
       meshRef.current.position.y = -2 + progress * 4;
       meshRef.current.visible = true;
-      const mat = meshRef.current.material as THREE.MeshBasicMaterial;
       mat.opacity = Math.sin(progress * Math.PI) * 0.15;
+    } else if (phase === "overload") {
+      // Rapid multi-scan
+      const rapidY = Math.sin(state.clock.elapsedTime * 6) * 2;
+      meshRef.current.position.y = rapidY;
+      meshRef.current.visible = true;
+      mat.opacity = 0.08 + Math.abs(Math.sin(state.clock.elapsedTime * 8)) * 0.1;
+      mat.color.setHex(0xff4444); // red during overload
     } else {
       meshRef.current.visible = false;
+      mat.color.setHex(0x4488ff); // reset to blue
     }
   });
 
@@ -807,11 +887,12 @@ interface Brain3DProps {
   showParticles?: boolean;
   showInfluence?: boolean;
   onStatusChange?: (msg: string) => void;
+  onPhaseChange?: (phase: string, insightLabel: string | null) => void;
 }
 
-export default function Brain3D({ regions, className = "", autoRotate = true, showParticles = false, showInfluence = false, onStatusChange }: Brain3DProps) {
+export default function Brain3D({ regions, className = "", autoRotate = true, showParticles = false, showInfluence = false, onStatusChange, onPhaseChange }: Brain3DProps) {
   const [isMobile, setIsMobile] = useState(false);
-  const influenceRef = useRef<InfluenceState>({ positions: [], nearRegions: new Map(), activePulses: [], scanPhase: 0 });
+  const influenceRef = useRef<InfluenceState>({ positions: [], nearRegions: new Map(), activePulses: [], phase: "calm", phaseProgress: 0, cycleIndex: 0 });
 
   useEffect(() => {
     setIsMobile(window.innerWidth < 768 || "ontouchstart" in window);
@@ -852,7 +933,7 @@ export default function Brain3D({ regions, className = "", autoRotate = true, sh
             {showInfluence && <InfluenceIcons regions={regions} influenceRef={influenceRef} />}
             {showInfluence && <InfluenceConnections regions={regions} influenceRef={influenceRef} />}
             {showInfluence && <ScanPlane />}
-            {showInfluence && <StatusSync influenceRef={influenceRef} onStatusChange={onStatusChange} />}
+            {showInfluence && <StatusSync influenceRef={influenceRef} onStatusChange={onStatusChange} onPhaseChange={onPhaseChange} />}
             {showParticles && <Particles enhanced={showInfluence} />}
             <OrbitControls
               enableZoom
@@ -872,19 +953,35 @@ export default function Brain3D({ regions, className = "", autoRotate = true, sh
   );
 }
 
-/* Syncs 3D animation state → React status text (runs inside Canvas) */
-function StatusSync({ influenceRef, onStatusChange }: { influenceRef: React.RefObject<InfluenceState>; onStatusChange?: (msg: string) => void }) {
-  const lastMsgIdx = useRef(-1);
+/* Syncs 3D phase → React overlay text */
+function StatusSync({ influenceRef, onStatusChange, onPhaseChange }: {
+  influenceRef: React.RefObject<InfluenceState>;
+  onStatusChange?: (msg: string) => void;
+  onPhaseChange?: (phase: PhaseName, insightLabel: string | null) => void;
+}) {
+  const lastPhase = useRef<string>("");
 
   useFrame((state) => {
-    if (!onStatusChange) return;
     const t = state.clock.elapsedTime;
+    const { name: phase, cycleIndex } = getPhase(t);
 
-    // Rotate messages every 3 seconds
-    const msgIdx = Math.floor(t / 3) % SCAN_MESSAGES.length;
-    if (msgIdx !== lastMsgIdx.current) {
-      lastMsgIdx.current = msgIdx;
-      onStatusChange(SCAN_MESSAGES[msgIdx]);
+    if (phase !== lastPhase.current) {
+      lastPhase.current = phase;
+
+      if (onStatusChange) {
+        const msgs: Record<PhaseName, string> = {
+          calm: "Initializing neural scan...",
+          influence: "Detecting incoming signals...",
+          overload: "WARNING: Stimulus overload detected",
+          insight: INSIGHT_LABELS[cycleIndex % INSIGHT_LABELS.length],
+        };
+        onStatusChange(msgs[phase]);
+      }
+
+      if (onPhaseChange) {
+        const insightLabel = phase === "insight" ? INSIGHT_LABELS[cycleIndex % INSIGHT_LABELS.length] : null;
+        onPhaseChange(phase, insightLabel);
+      }
     }
   });
 
@@ -930,7 +1027,7 @@ function MobileScene({ regions, autoRotate }: { regions: BrainRegion[]; autoRota
 /* ============================================
    HERO BRAIN
    ============================================ */
-export function HeroBrain({ onStatusChange }: { onStatusChange?: (msg: string) => void } = {}) {
+export function HeroBrain({ onStatusChange, onPhaseChange }: { onStatusChange?: (msg: string) => void; onPhaseChange?: (phase: string, insightLabel: string | null) => void } = {}) {
   const regions: BrainRegion[] = [
     { name: "Decision Making", id: "pfc", role: "Helps viewers decide to take action", position: [0, 0.2, 0.9], activation: 0.85, color: "#ffbb00" },
     { name: "Emotions", id: "amygdala", role: "Creates excitement and urgency", position: [0.4, -0.2, 0.3], activation: 0.82, color: "#ff8800" },
@@ -946,7 +1043,7 @@ export function HeroBrain({ onStatusChange }: { onStatusChange?: (msg: string) =
     { name: "Storytelling", id: "temporal", role: "Narrative understanding", position: [1.0, -0.3, 0.8], activation: 0.69, color: "#44aa88" },
   ];
 
-  return <Brain3D regions={regions} className="w-full h-[380px] sm:h-[420px] md:h-[550px]" autoRotate showParticles showInfluence onStatusChange={onStatusChange} />;
+  return <Brain3D regions={regions} className="w-full h-[380px] sm:h-[420px] md:h-[550px]" autoRotate showParticles showInfluence onStatusChange={onStatusChange} onPhaseChange={onPhaseChange} />;
 }
 
 useGLTF.preload("/models/brain-optimized.glb");
