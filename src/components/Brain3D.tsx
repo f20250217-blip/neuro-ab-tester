@@ -7,6 +7,23 @@ import * as THREE from "three";
 import { BrainRegion } from "@/lib/neuro-engine";
 
 /* ============================================
+   INFLUENCE SOURCES — what shapes your brain
+   ============================================ */
+const INFLUENCE_SOURCES = [
+  { id: "music",  icon: "♪", targetRegions: ["auditory", "amygdala", "hippocampus"], orbitRadius: 2.4, orbitSpeed: 0.15, orbitTilt: 0.3, heightOffset: 0.2,  color: "#a855f7" },
+  { id: "social", icon: "◎", targetRegions: ["amygdala", "nac", "acc"],              orbitRadius: 2.6, orbitSpeed: -0.12, orbitTilt: -0.2, heightOffset: -0.1, color: "#3b82f6" },
+  { id: "ads",    icon: "◈", targetRegions: ["pfc", "nac", "visual"],               orbitRadius: 2.3, orbitSpeed: 0.1,  orbitTilt: 0.5, heightOffset: 0.5,  color: "#f59e0b" },
+  { id: "text",   icon: "¶", targetRegions: ["broca", "wernicke", "hippocampus"],    orbitRadius: 2.5, orbitSpeed: -0.08, orbitTilt: -0.4, heightOffset: 0.3, color: "#10b981" },
+  { id: "video",  icon: "▶", targetRegions: ["visual", "temporal", "amygdala"],     orbitRadius: 2.7, orbitSpeed: 0.13, orbitTilt: 0.1, heightOffset: -0.3, color: "#ef4444" },
+  { id: "screen", icon: "▣", targetRegions: ["acc", "pfc", "motor"],               orbitRadius: 2.2, orbitSpeed: -0.11, orbitTilt: 0.6, heightOffset: 0.0,  color: "#8b5cf6" },
+];
+
+interface InfluenceState {
+  positions: THREE.Vector3[];
+  nearRegions: Map<string, number>; // regionId -> proximity 0-1
+}
+
+/* ============================================
    Custom brain shader — translucent with glow
    ============================================ */
 const vertShader = `
@@ -308,28 +325,33 @@ function FlowingParticles({ regions }: { regions: BrainRegion[] }) {
 }
 
 /* ============================================
-   REGION NODES — pulsing spheres (simplified)
+   REGION NODES — pulsing spheres with influence glow
    ============================================ */
-function RegionNodes({ regions }: { regions: BrainRegion[] }) {
+function RegionNodes({ regions, influenceRef }: { regions: BrainRegion[]; influenceRef?: React.RefObject<InfluenceState | null> }) {
   const instancedRef = useRef<THREE.InstancedMesh>(null);
   const dummy = useMemo(() => new THREE.Object3D(), []);
   const tempColor = useMemo(() => new THREE.Color(), []);
+  const white = useMemo(() => new THREE.Color("#ffffff"), []);
 
   useFrame((state) => {
     if (!instancedRef.current) return;
     const t = state.clock.elapsedTime;
+    const nearRegions = influenceRef?.current?.nearRegions;
 
     for (let i = 0; i < regions.length; i++) {
       const r = regions[i];
+      const proximity = nearRegions?.get(r.id) || 0;
       const baseScale = 0.035 + r.activation * 0.045;
+      const influenceBoost = 1 + proximity * 0.5;
       const pulse = 1 + Math.sin(t * 3 + r.activation * 10) * 0.12 * r.activation;
 
       dummy.position.set(...r.position);
-      dummy.scale.setScalar(baseScale * pulse);
+      dummy.scale.setScalar(baseScale * pulse * influenceBoost);
       dummy.updateMatrix();
       instancedRef.current.setMatrixAt(i, dummy.matrix);
 
       tempColor.set(r.color);
+      if (proximity > 0) tempColor.lerp(white, proximity * 0.3);
       instancedRef.current.setColorAt(i, tempColor);
     }
     instancedRef.current.instanceMatrix.needsUpdate = true;
@@ -341,6 +363,182 @@ function RegionNodes({ regions }: { regions: BrainRegion[] }) {
       <sphereGeometry args={[1, 6, 6]} />
       <meshBasicMaterial transparent opacity={0.45} />
     </instancedMesh>
+  );
+}
+
+/* ============================================
+   INFLUENCE ICONS — orbiting sprites around brain
+   ============================================ */
+function InfluenceIcons({ regions, influenceRef }: { regions: BrainRegion[]; influenceRef: React.MutableRefObject<InfluenceState> }) {
+  const groupRef = useRef<THREE.Group>(null);
+
+  // Create CanvasTexture sprites for each icon
+  const textures = useMemo(() => {
+    return INFLUENCE_SOURCES.map((src) => {
+      const canvas = document.createElement("canvas");
+      canvas.width = 64;
+      canvas.height = 64;
+      const ctx = canvas.getContext("2d")!;
+      ctx.clearRect(0, 0, 64, 64);
+      // Glow circle
+      const gradient = ctx.createRadialGradient(32, 32, 0, 32, 32, 32);
+      gradient.addColorStop(0, src.color + "88");
+      gradient.addColorStop(0.5, src.color + "33");
+      gradient.addColorStop(1, "transparent");
+      ctx.fillStyle = gradient;
+      ctx.beginPath();
+      ctx.arc(32, 32, 30, 0, Math.PI * 2);
+      ctx.fill();
+      // Icon text
+      ctx.fillStyle = src.color;
+      ctx.font = "bold 28px sans-serif";
+      ctx.textAlign = "center";
+      ctx.textBaseline = "middle";
+      ctx.fillText(src.icon, 32, 34);
+      const tex = new THREE.CanvasTexture(canvas);
+      tex.needsUpdate = true;
+      return tex;
+    });
+  }, []);
+
+  // Region position lookup
+  const regionMap = useMemo(() => {
+    const m = new Map<string, THREE.Vector3>();
+    for (const r of regions) m.set(r.id, new THREE.Vector3(...r.position));
+    return m;
+  }, [regions]);
+
+  useFrame((state) => {
+    if (!groupRef.current) return;
+    const t = state.clock.elapsedTime;
+    const nearRegions = new Map<string, number>();
+    const positions: THREE.Vector3[] = [];
+
+    groupRef.current.children.forEach((child, i) => {
+      const src = INFLUENCE_SOURCES[i];
+      if (!src) return;
+
+      // Orbital position with tilt
+      const angle = t * src.orbitSpeed;
+      const x = Math.cos(angle) * src.orbitRadius;
+      const z = Math.sin(angle) * src.orbitRadius;
+      const y = src.heightOffset + Math.sin(angle * 0.7) * 0.3;
+      // Apply tilt rotation around X axis
+      const cosT = Math.cos(src.orbitTilt);
+      const sinT = Math.sin(src.orbitTilt);
+      const ry = y * cosT - z * sinT;
+      const rz = y * sinT + z * cosT;
+
+      child.position.set(x, ry, rz);
+      positions.push(child.position.clone());
+
+      // Subtle bob
+      child.position.y += Math.sin(t * 1.5 + i) * 0.05;
+
+      // Calculate proximity to target regions
+      for (const targetId of src.targetRegions) {
+        const regionPos = regionMap.get(targetId);
+        if (!regionPos) continue;
+        const dist = child.position.distanceTo(regionPos);
+        const proximity = Math.max(0, 1 - dist / 3.5);
+        const existing = nearRegions.get(targetId) || 0;
+        if (proximity > existing) nearRegions.set(targetId, proximity);
+      }
+    });
+
+    // Write shared state
+    influenceRef.current.positions = positions;
+    influenceRef.current.nearRegions = nearRegions;
+  });
+
+  return (
+    <group ref={groupRef}>
+      {INFLUENCE_SOURCES.map((src, i) => (
+        <sprite key={src.id} scale={[0.35, 0.35, 1]}>
+          <spriteMaterial map={textures[i]} transparent opacity={0.7} depthWrite={false} blending={THREE.AdditiveBlending} />
+        </sprite>
+      ))}
+    </group>
+  );
+}
+
+/* ============================================
+   INFLUENCE CONNECTIONS — lines from icons to brain
+   ============================================ */
+function InfluenceConnections({ regions, influenceRef }: { regions: BrainRegion[]; influenceRef: React.RefObject<InfluenceState> }) {
+  const MAX_SEGMENTS = 36;
+  const lineRef = useRef<THREE.LineSegments>(null);
+
+  const regionMap = useMemo(() => {
+    const m = new Map<string, THREE.Vector3>();
+    for (const r of regions) m.set(r.id, new THREE.Vector3(...r.position));
+    return m;
+  }, [regions]);
+
+  // Pre-allocate buffer
+  const { geometry, colorAttr } = useMemo(() => {
+    const geo = new THREE.BufferGeometry();
+    const posArr = new Float32Array(MAX_SEGMENTS * 2 * 3);
+    const colArr = new Float32Array(MAX_SEGMENTS * 2 * 3);
+    geo.setAttribute("position", new THREE.BufferAttribute(posArr, 3));
+    geo.setAttribute("color", new THREE.BufferAttribute(colArr, 3));
+    geo.setDrawRange(0, 0);
+    return { geometry: geo, colorAttr: colArr };
+  }, []);
+
+  useFrame(() => {
+    if (!lineRef.current || !influenceRef.current) return;
+    const { positions, nearRegions } = influenceRef.current;
+    if (!positions.length) return;
+
+    const posAttr = geometry.attributes.position as THREE.BufferAttribute;
+    const colAttrBuf = geometry.attributes.color as THREE.BufferAttribute;
+    let segIdx = 0;
+
+    for (let i = 0; i < INFLUENCE_SOURCES.length && segIdx < MAX_SEGMENTS; i++) {
+      const src = INFLUENCE_SOURCES[i];
+      const iconPos = positions[i];
+      if (!iconPos) continue;
+      const col = new THREE.Color(src.color);
+
+      for (const targetId of src.targetRegions) {
+        if (segIdx >= MAX_SEGMENTS) break;
+        const regionPos = regionMap.get(targetId);
+        if (!regionPos) continue;
+        const proximity = nearRegions.get(targetId) || 0;
+        if (proximity < 0.05) continue;
+
+        const base = segIdx * 2 * 3;
+        // Start point (icon)
+        posAttr.array[base] = iconPos.x;
+        posAttr.array[base + 1] = iconPos.y;
+        posAttr.array[base + 2] = iconPos.z;
+        // End point (region)
+        posAttr.array[base + 3] = regionPos.x;
+        posAttr.array[base + 4] = regionPos.y;
+        posAttr.array[base + 5] = regionPos.z;
+        // Colors with proximity fade
+        const alpha = proximity * 0.6;
+        colAttrBuf.array[base] = col.r * alpha;
+        colAttrBuf.array[base + 1] = col.g * alpha;
+        colAttrBuf.array[base + 2] = col.b * alpha;
+        colAttrBuf.array[base + 3] = col.r * alpha * 0.3;
+        colAttrBuf.array[base + 4] = col.g * alpha * 0.3;
+        colAttrBuf.array[base + 5] = col.b * alpha * 0.3;
+
+        segIdx++;
+      }
+    }
+
+    geometry.setDrawRange(0, segIdx * 2);
+    posAttr.needsUpdate = true;
+    colAttrBuf.needsUpdate = true;
+  });
+
+  return (
+    <lineSegments ref={lineRef} geometry={geometry}>
+      <lineBasicMaterial vertexColors transparent opacity={0.5} blending={THREE.AdditiveBlending} depthWrite={false} />
+    </lineSegments>
   );
 }
 
@@ -419,10 +617,12 @@ interface Brain3DProps {
   className?: string;
   autoRotate?: boolean;
   showParticles?: boolean;
+  showInfluence?: boolean;
 }
 
-export default function Brain3D({ regions, className = "", autoRotate = true, showParticles = false }: Brain3DProps) {
+export default function Brain3D({ regions, className = "", autoRotate = true, showParticles = false, showInfluence = false }: Brain3DProps) {
   const [isMobile, setIsMobile] = useState(false);
+  const influenceRef = useRef<InfluenceState>({ positions: [], nearRegions: new Map() });
 
   useEffect(() => {
     setIsMobile(window.innerWidth < 768 || "ontouchstart" in window);
@@ -459,7 +659,9 @@ export default function Brain3D({ regions, className = "", autoRotate = true, sh
             <BrainMesh regions={regions} autoRotate={autoRotate} isMobile={false} />
             <NeuralPathways regions={regions} />
             <FlowingParticles regions={regions} />
-            <RegionNodes regions={regions} />
+            <RegionNodes regions={regions} influenceRef={showInfluence ? influenceRef : undefined} />
+            {showInfluence && <InfluenceIcons regions={regions} influenceRef={influenceRef} />}
+            {showInfluence && <InfluenceConnections regions={regions} influenceRef={influenceRef} />}
             {showParticles && <Particles />}
             <OrbitControls
               enableZoom
@@ -534,7 +736,7 @@ export function HeroBrain() {
     { name: "Storytelling", id: "temporal", role: "Narrative understanding", position: [1.0, -0.3, 0.8], activation: 0.69, color: "#44aa88" },
   ];
 
-  return <Brain3D regions={regions} className="w-full h-[380px] sm:h-[420px] md:h-[550px]" autoRotate showParticles />;
+  return <Brain3D regions={regions} className="w-full h-[380px] sm:h-[420px] md:h-[550px]" autoRotate showParticles showInfluence />;
 }
 
 useGLTF.preload("/models/brain-optimized.glb");
