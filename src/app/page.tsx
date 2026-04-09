@@ -7,6 +7,7 @@ import ScoreBar from "@/components/ScoreBar";
 import RegionTable from "@/components/RegionTable";
 import { ComparisonResult, NeuralAnalysis } from "@/lib/neuro-engine";
 import ShareCard from "@/components/ShareCard";
+import ErrorBoundary from "@/components/ErrorBoundary";
 
 const Brain3D = dynamic(() => import("@/components/Brain3D"), {
   ssr: false,
@@ -1382,6 +1383,7 @@ export default function Home() {
 
       {/* ==================== PROFILE RESULTS STATE ==================== */}
       {state === "profile-results" && profileResult && (
+        <ErrorBoundary onReset={reset}>
         <main className="relative z-10 max-w-6xl mx-auto px-4 md:px-6 py-8 space-y-7">
           {/* Header */}
           <div className="animated-border rounded-2xl">
@@ -1575,6 +1577,7 @@ export default function Home() {
             <p className="text-[10px] text-[#2d2d50] max-w-lg mx-auto leading-relaxed">Results are AI-generated predictions based on neuromarketing research patterns. Accuracy improves as our models learn from more analyses. Early results may vary from real-world performance — use as directional guidance alongside your own testing.</p>
           </div>
         </main>
+        </ErrorBoundary>
       )}
     </div>
   );
