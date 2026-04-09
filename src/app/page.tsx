@@ -121,6 +121,10 @@ export default function Home() {
   const [progress, setProgress] = useState(0);
   const [activeTab, setActiveTab] = useState<string>("overview");
 
+  // Hero scan status text
+  const [scanStatus, setScanStatus] = useState("Analyzing attention patterns...");
+  const handleScanStatus = useCallback((msg: string) => setScanStatus(msg), []);
+
   // Scroll reveal observer — wait a tick for DOM to paint
   const observerRef = useRef<IntersectionObserver | null>(null);
   useEffect(() => {
@@ -380,10 +384,16 @@ export default function Home() {
           <section className="relative max-w-7xl mx-auto px-4 md:px-6">
             <div className="text-center pt-4 pb-2">
               <div className="relative -mx-6">
-                <HeroBrain />
+                <HeroBrain onStatusChange={handleScanStatus} />
                 <div className="absolute inset-x-0 bottom-0 h-32 sm:h-64 bg-gradient-to-t from-[#050508] via-[#050508]/80 to-transparent" />
               </div>
               <div className="relative -mt-12 sm:-mt-36 z-10 space-y-4 sm:space-y-5 px-2 sm:px-0">
+                {/* Live scan status */}
+                <div className="flex items-center justify-center gap-2 text-xs sm:text-sm text-[#7c6cf0]/80 font-mono tracking-wide">
+                  <span className="inline-block w-1.5 h-1.5 rounded-full bg-[#7c6cf0] animate-pulse" />
+                  <span key={scanStatus} className="animate-[fadeSlideIn_0.4s_ease-out]">{scanStatus}</span>
+                </div>
+
                 <h1 className="font-display text-3xl sm:text-4xl md:text-6xl lg:text-7xl font-bold leading-[1.05] tracking-[-0.03em]">
                   <span className="gradient-text-shimmer">Your Brain on Screen</span>
                   <br />

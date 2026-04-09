@@ -1,6 +1,6 @@
 "use client";
 
-import { useRef, useMemo, useState, useEffect } from "react";
+import { useRef, useMemo, useState, useEffect, useCallback } from "react";
 import { Canvas, useFrame, useThree } from "@react-three/fiber";
 import { OrbitControls, useGLTF } from "@react-three/drei";
 import * as THREE from "three";
@@ -10,17 +10,32 @@ import { BrainRegion } from "@/lib/neuro-engine";
    INFLUENCE SOURCES — what shapes your brain
    ============================================ */
 const INFLUENCE_SOURCES = [
-  { id: "music",  icon: "♪", targetRegions: ["auditory", "amygdala", "hippocampus"], orbitRadius: 2.4, orbitSpeed: 0.15, orbitTilt: 0.3, heightOffset: 0.2,  color: "#a855f7" },
-  { id: "social", icon: "◎", targetRegions: ["amygdala", "nac", "acc"],              orbitRadius: 2.6, orbitSpeed: -0.12, orbitTilt: -0.2, heightOffset: -0.1, color: "#3b82f6" },
-  { id: "ads",    icon: "◈", targetRegions: ["pfc", "nac", "visual"],               orbitRadius: 2.3, orbitSpeed: 0.1,  orbitTilt: 0.5, heightOffset: 0.5,  color: "#f59e0b" },
-  { id: "text",   icon: "¶", targetRegions: ["broca", "wernicke", "hippocampus"],    orbitRadius: 2.5, orbitSpeed: -0.08, orbitTilt: -0.4, heightOffset: 0.3, color: "#10b981" },
-  { id: "video",  icon: "▶", targetRegions: ["visual", "temporal", "amygdala"],     orbitRadius: 2.7, orbitSpeed: 0.13, orbitTilt: 0.1, heightOffset: -0.3, color: "#ef4444" },
-  { id: "screen", icon: "▣", targetRegions: ["acc", "pfc", "motor"],               orbitRadius: 2.2, orbitSpeed: -0.11, orbitTilt: 0.6, heightOffset: 0.0,  color: "#8b5cf6" },
+  { id: "music",  icon: "♪", label: "Music",  targetRegions: ["auditory", "amygdala", "hippocampus"], orbitRadius: 2.4, orbitSpeed: 0.15, orbitTilt: 0.3, heightOffset: 0.2,  color: "#a855f7", diveDelay: 0 },
+  { id: "social", icon: "◎", label: "Social", targetRegions: ["amygdala", "nac", "acc"],              orbitRadius: 2.6, orbitSpeed: -0.12, orbitTilt: -0.2, heightOffset: -0.1, color: "#3b82f6", diveDelay: 2.5 },
+  { id: "ads",    icon: "◈", label: "Ads",    targetRegions: ["pfc", "nac", "visual"],               orbitRadius: 2.3, orbitSpeed: 0.1,  orbitTilt: 0.5, heightOffset: 0.5,  color: "#f59e0b", diveDelay: 5 },
+  { id: "text",   icon: "¶", label: "Text",   targetRegions: ["broca", "wernicke", "hippocampus"],    orbitRadius: 2.5, orbitSpeed: -0.08, orbitTilt: -0.4, heightOffset: 0.3, color: "#10b981", diveDelay: 7.5 },
+  { id: "video",  icon: "▶", label: "Video",  targetRegions: ["visual", "temporal", "amygdala"],     orbitRadius: 2.7, orbitSpeed: 0.13, orbitTilt: 0.1, heightOffset: -0.3, color: "#ef4444", diveDelay: 10 },
+  { id: "screen", icon: "▣", label: "Screen", targetRegions: ["acc", "pfc", "motor"],               orbitRadius: 2.2, orbitSpeed: -0.11, orbitTilt: 0.6, heightOffset: 0.0,  color: "#8b5cf6", diveDelay: 12.5 },
 ];
+
+const SCAN_MESSAGES = [
+  "Analyzing attention patterns...",
+  "Detecting emotional triggers...",
+  "Mapping dopamine response...",
+  "Scanning memory encoding...",
+  "Measuring reward sensitivity...",
+  "Tracing neural pathways...",
+];
+
+// Full dive cycle = 15s per icon, staggered
+const DIVE_CYCLE = 15;
+const DIVE_DURATION = 2.5; // seconds to dive in + pulse + return
 
 interface InfluenceState {
   positions: THREE.Vector3[];
-  nearRegions: Map<string, number>; // regionId -> proximity 0-1
+  nearRegions: Map<string, number>;
+  activePulses: { center: THREE.Vector3; color: THREE.Color; time: number }[];
+  scanPhase: number; // 0-1 progress of current scan sweep
 }
 
 /* ============================================
@@ -49,6 +64,11 @@ const fragShader = `
   varying vec3 vColor;
   uniform float uTime;
   uniform vec3 uCamPos;
+  uniform float uScanY;
+  uniform float uScanIntensity;
+  uniform vec3 uPulseCenter;
+  uniform float uPulseRadius;
+  uniform vec3 uPulseColor;
 
   void main() {
     vec3 viewDir = normalize(uCamPos - vWorldPos);
@@ -84,6 +104,17 @@ const fragShader = `
     float wave = sin(uTime * 2.0 + vPos.x * 3.0 + vPos.z * 2.0) * 0.015;
     col += wave * vColor;
 
+    // Scan line effect — glowing horizontal band
+    float scanDist = abs(vPos.y - uScanY);
+    float scanLine = smoothstep(0.15, 0.0, scanDist) * uScanIntensity;
+    col += vec3(0.3, 0.6, 1.0) * scanLine * 0.4;
+    col += vColor * scanLine * 0.3;
+
+    // Pulse wave — expanding ring from influence hit
+    float pulseDist = distance(vPos, uPulseCenter);
+    float pulseRing = smoothstep(0.15, 0.0, abs(pulseDist - uPulseRadius)) * step(0.01, uPulseRadius);
+    col += uPulseColor * pulseRing * 0.5;
+
     gl_FragColor = vec4(col, 0.95);
   }
 `;
@@ -91,7 +122,7 @@ const fragShader = `
 /* ============================================
    BRAIN MESH
    ============================================ */
-function BrainMesh({ regions, autoRotate, isMobile }: { regions: BrainRegion[]; autoRotate: boolean; isMobile: boolean }) {
+function BrainMesh({ regions, autoRotate, isMobile, influenceRef }: { regions: BrainRegion[]; autoRotate: boolean; isMobile: boolean; influenceRef?: React.RefObject<InfluenceState | null> }) {
   const groupRef = useRef<THREE.Group>(null);
   const matRef = useRef<THREE.ShaderMaterial>(null);
   const { scene } = useGLTF("/models/brain-optimized.glb");
@@ -163,12 +194,16 @@ function BrainMesh({ regions, autoRotate, isMobile }: { regions: BrainRegion[]; 
   const uniforms = useMemo(() => ({
     uTime: { value: 0 },
     uCamPos: { value: new THREE.Vector3(0, 2, 4) },
+    uScanY: { value: -5 },
+    uScanIntensity: { value: 0 },
+    uPulseCenter: { value: new THREE.Vector3(0, 0, 0) },
+    uPulseRadius: { value: 0 },
+    uPulseColor: { value: new THREE.Vector3(1, 1, 1) },
   }), []);
 
   useFrame((state) => {
     if (groupRef.current) {
       if (autoRotate) groupRef.current.rotation.y += 0.002;
-      // Mouse tilt — desktop only, skip on mobile to save perf
       if (!isMobile) {
         const targetX = state.pointer.y * 0.06;
         const targetZ = -state.pointer.x * 0.06;
@@ -177,8 +212,38 @@ function BrainMesh({ regions, autoRotate, isMobile }: { regions: BrainRegion[]; 
       }
     }
     if (matRef.current) {
-      matRef.current.uniforms.uTime.value = state.clock.elapsedTime;
-      matRef.current.uniforms.uCamPos.value.copy(state.camera.position);
+      const u = matRef.current.uniforms;
+      u.uTime.value = state.clock.elapsedTime;
+      u.uCamPos.value.copy(state.camera.position);
+
+      // Scan sweep — every 8 seconds, scan Y from -2 to +2 over 2s
+      const scanCycle = 8;
+      const scanDuration = 2;
+      const scanT = state.clock.elapsedTime % scanCycle;
+      if (scanT < scanDuration) {
+        const progress = scanT / scanDuration;
+        u.uScanY.value = -2 + progress * 4;
+        u.uScanIntensity.value = Math.sin(progress * Math.PI); // fade in/out
+      } else {
+        u.uScanIntensity.value = Math.max(0, u.uScanIntensity.value - 0.05);
+      }
+
+      // Pulse from influence hits
+      const inf = influenceRef?.current;
+      if (inf && inf.activePulses.length > 0) {
+        const pulse = inf.activePulses[0];
+        const age = state.clock.elapsedTime - pulse.time;
+        if (age < 1.5) {
+          u.uPulseCenter.value.copy(pulse.center);
+          u.uPulseRadius.value = age * 1.2; // expanding ring
+          u.uPulseColor.value.set(pulse.color.r, pulse.color.g, pulse.color.b);
+        } else {
+          u.uPulseRadius.value = Math.max(0, u.uPulseRadius.value - 0.1);
+          inf.activePulses.shift();
+        }
+      } else {
+        u.uPulseRadius.value = Math.max(0, u.uPulseRadius.value - 0.1);
+      }
     }
   });
 
@@ -367,46 +432,50 @@ function RegionNodes({ regions, influenceRef }: { regions: BrainRegion[]; influe
 }
 
 /* ============================================
-   INFLUENCE ICONS — orbiting sprites around brain
+   INFLUENCE ICONS — orbit + dive-in animation
    ============================================ */
 function InfluenceIcons({ regions, influenceRef }: { regions: BrainRegion[]; influenceRef: React.MutableRefObject<InfluenceState> }) {
   const groupRef = useRef<THREE.Group>(null);
 
-  // Create CanvasTexture sprites for each icon
   const textures = useMemo(() => {
     return INFLUENCE_SOURCES.map((src) => {
       const canvas = document.createElement("canvas");
-      canvas.width = 64;
-      canvas.height = 64;
+      canvas.width = 96;
+      canvas.height = 96;
       const ctx = canvas.getContext("2d")!;
-      ctx.clearRect(0, 0, 64, 64);
-      // Glow circle
-      const gradient = ctx.createRadialGradient(32, 32, 0, 32, 32, 32);
-      gradient.addColorStop(0, src.color + "88");
-      gradient.addColorStop(0.5, src.color + "33");
+      ctx.clearRect(0, 0, 96, 96);
+      // Outer glow
+      const gradient = ctx.createRadialGradient(48, 48, 0, 48, 48, 46);
+      gradient.addColorStop(0, src.color + "cc");
+      gradient.addColorStop(0.35, src.color + "66");
+      gradient.addColorStop(0.7, src.color + "22");
       gradient.addColorStop(1, "transparent");
       ctx.fillStyle = gradient;
       ctx.beginPath();
-      ctx.arc(32, 32, 30, 0, Math.PI * 2);
+      ctx.arc(48, 48, 46, 0, Math.PI * 2);
       ctx.fill();
-      // Icon text
-      ctx.fillStyle = src.color;
-      ctx.font = "bold 28px sans-serif";
+      // Icon
+      ctx.fillStyle = "#ffffff";
+      ctx.font = "bold 36px sans-serif";
       ctx.textAlign = "center";
       ctx.textBaseline = "middle";
-      ctx.fillText(src.icon, 32, 34);
+      ctx.shadowColor = src.color;
+      ctx.shadowBlur = 12;
+      ctx.fillText(src.icon, 48, 50);
       const tex = new THREE.CanvasTexture(canvas);
       tex.needsUpdate = true;
       return tex;
     });
   }, []);
 
-  // Region position lookup
   const regionMap = useMemo(() => {
     const m = new Map<string, THREE.Vector3>();
     for (const r of regions) m.set(r.id, new THREE.Vector3(...r.position));
     return m;
   }, [regions]);
+
+  // Smooth easing
+  const easeInOutCubic = (t: number) => t < 0.5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2;
 
   useFrame((state) => {
     if (!groupRef.current) return;
@@ -417,45 +486,105 @@ function InfluenceIcons({ regions, influenceRef }: { regions: BrainRegion[]; inf
     groupRef.current.children.forEach((child, i) => {
       const src = INFLUENCE_SOURCES[i];
       if (!src) return;
+      const sprite = child as THREE.Sprite;
 
-      // Orbital position with tilt
+      // Orbital position
       const angle = t * src.orbitSpeed;
-      const x = Math.cos(angle) * src.orbitRadius;
-      const z = Math.sin(angle) * src.orbitRadius;
-      const y = src.heightOffset + Math.sin(angle * 0.7) * 0.3;
-      // Apply tilt rotation around X axis
+      const ox = Math.cos(angle) * src.orbitRadius;
+      const oz = Math.sin(angle) * src.orbitRadius;
+      const oy = src.heightOffset + Math.sin(angle * 0.7) * 0.3;
       const cosT = Math.cos(src.orbitTilt);
       const sinT = Math.sin(src.orbitTilt);
-      const ry = y * cosT - z * sinT;
-      const rz = y * sinT + z * cosT;
+      const orbitPos = new THREE.Vector3(ox, oy * cosT - oz * sinT, oy * sinT + oz * cosT);
 
-      child.position.set(x, ry, rz);
-      positions.push(child.position.clone());
+      // Dive-in cycle: every DIVE_CYCLE seconds, offset by diveDelay
+      const cycleTime = (t - src.diveDelay + DIVE_CYCLE * 10) % DIVE_CYCLE;
+      const diveProgress = Math.max(0, Math.min(1, cycleTime / DIVE_DURATION));
 
-      // Subtle bob
-      child.position.y += Math.sin(t * 1.5 + i) * 0.05;
+      // Target = first target region position
+      const targetRegionId = src.targetRegions[0];
+      const targetPos = regionMap.get(targetRegionId) || new THREE.Vector3(0, 0, 0);
 
-      // Calculate proximity to target regions
-      for (const targetId of src.targetRegions) {
-        const regionPos = regionMap.get(targetId);
-        if (!regionPos) continue;
-        const dist = child.position.distanceTo(regionPos);
-        const proximity = Math.max(0, 1 - dist / 3.5);
-        const existing = nearRegions.get(targetId) || 0;
-        if (proximity > existing) nearRegions.set(targetId, proximity);
+      let finalPos: THREE.Vector3;
+      let scale = 0.4;
+      let opacity = 0.75;
+
+      if (diveProgress > 0 && diveProgress < 1) {
+        // Phase 1 (0-0.4): dive toward brain
+        // Phase 2 (0.4-0.6): impact — hold near target
+        // Phase 3 (0.6-1.0): return to orbit
+        if (diveProgress < 0.4) {
+          const p = easeInOutCubic(diveProgress / 0.4);
+          finalPos = orbitPos.clone().lerp(targetPos, p);
+          scale = 0.4 - p * 0.15; // shrink as it dives
+          opacity = 0.75 + p * 0.25;
+        } else if (diveProgress < 0.6) {
+          // Impact hold — pulse
+          const impactT = (diveProgress - 0.4) / 0.2;
+          finalPos = targetPos.clone();
+          scale = 0.25 + Math.sin(impactT * Math.PI) * 0.15;
+          opacity = 1.0;
+
+          // Trigger pulse on first frame of impact
+          if (impactT < 0.15 && influenceRef.current.activePulses.length < 3) {
+            const lastPulse = influenceRef.current.activePulses[influenceRef.current.activePulses.length - 1];
+            if (!lastPulse || t - lastPulse.time > 0.3) {
+              influenceRef.current.activePulses.push({
+                center: targetPos.clone(),
+                color: new THREE.Color(src.color),
+                time: t,
+              });
+            }
+          }
+
+          // Max proximity during impact
+          for (const rid of src.targetRegions) {
+            nearRegions.set(rid, 1.0);
+          }
+        } else {
+          const p = easeInOutCubic((diveProgress - 0.6) / 0.4);
+          finalPos = targetPos.clone().lerp(orbitPos, p);
+          scale = 0.25 + p * 0.15;
+          opacity = 1.0 - p * 0.25;
+        }
+      } else {
+        finalPos = orbitPos;
+        // Subtle bob
+        finalPos.y += Math.sin(t * 1.5 + i) * 0.05;
+      }
+
+      child.position.copy(finalPos);
+      sprite.scale.setScalar(scale);
+      (sprite.material as THREE.SpriteMaterial).opacity = opacity;
+      positions.push(finalPos.clone());
+
+      // Proximity for non-diving state
+      if (diveProgress === 0 || diveProgress >= 1) {
+        for (const targetId of src.targetRegions) {
+          const regionPos = regionMap.get(targetId);
+          if (!regionPos) continue;
+          const dist = child.position.distanceTo(regionPos);
+          const proximity = Math.max(0, 1 - dist / 3.5);
+          const existing = nearRegions.get(targetId) || 0;
+          if (proximity > existing) nearRegions.set(targetId, proximity);
+        }
       }
     });
 
-    // Write shared state
     influenceRef.current.positions = positions;
     influenceRef.current.nearRegions = nearRegions;
+
+    // Scan phase for external sync
+    const scanCycle = 8;
+    const scanT = t % scanCycle;
+    influenceRef.current.scanPhase = scanT < 2 ? scanT / 2 : 0;
   });
 
   return (
     <group ref={groupRef}>
       {INFLUENCE_SOURCES.map((src, i) => (
-        <sprite key={src.id} scale={[0.35, 0.35, 1]}>
-          <spriteMaterial map={textures[i]} transparent opacity={0.7} depthWrite={false} blending={THREE.AdditiveBlending} />
+        <sprite key={src.id} scale={[0.4, 0.4, 1]}>
+          <spriteMaterial map={textures[i]} transparent opacity={0.75} depthWrite={false} blending={THREE.AdditiveBlending} />
         </sprite>
       ))}
     </group>
@@ -543,34 +672,93 @@ function InfluenceConnections({ regions, influenceRef }: { regions: BrainRegion[
 }
 
 /* ============================================
-   PARTICLES
+   PARTICLES — ambient + floating dust
    ============================================ */
-function Particles() {
+function Particles({ enhanced }: { enhanced?: boolean }) {
   const ref = useRef<THREE.Points>(null);
-  const positions = useMemo(() => {
-    const arr = new Float32Array(40 * 3);
-    for (let i = 0; i < 40; i++) {
+  const count = enhanced ? 80 : 40;
+
+  const { positions: posArr, colors } = useMemo(() => {
+    const pos = new Float32Array(count * 3);
+    const col = new Float32Array(count * 3);
+    for (let i = 0; i < count; i++) {
       const t = Math.random() * Math.PI * 2;
       const p = Math.acos(2 * Math.random() - 1);
-      const r = 1.8 + Math.random() * 0.5;
-      arr[i * 3] = r * Math.sin(p) * Math.cos(t);
-      arr[i * 3 + 1] = r * Math.sin(p) * Math.sin(t);
-      arr[i * 3 + 2] = r * Math.cos(p);
+      const r = 1.6 + Math.random() * (enhanced ? 1.5 : 0.5);
+      pos[i * 3] = r * Math.sin(p) * Math.cos(t);
+      pos[i * 3 + 1] = r * Math.sin(p) * Math.sin(t);
+      pos[i * 3 + 2] = r * Math.cos(p);
+      // Color variety
+      const hue = Math.random();
+      const c = new THREE.Color().setHSL(0.7 + hue * 0.2, 0.6, 0.5 + Math.random() * 0.3);
+      col[i * 3] = c.r;
+      col[i * 3 + 1] = c.g;
+      col[i * 3 + 2] = c.b;
     }
-    return arr;
-  }, []);
+    return { positions: pos, colors: col };
+  }, [count, enhanced]);
 
   useFrame((s) => {
-    if (ref.current) ref.current.rotation.y = s.clock.elapsedTime * 0.02;
+    if (!ref.current) return;
+    ref.current.rotation.y = s.clock.elapsedTime * 0.015;
+    if (enhanced) {
+      // Gentle float
+      const posAttr = ref.current.geometry.attributes.position as THREE.BufferAttribute;
+      for (let i = 0; i < count; i++) {
+        const baseY = posArr[i * 3 + 1];
+        (posAttr.array as Float32Array)[i * 3 + 1] = baseY + Math.sin(s.clock.elapsedTime * 0.5 + i * 0.3) * 0.03;
+      }
+      posAttr.needsUpdate = true;
+    }
   });
 
   return (
     <points ref={ref}>
       <bufferGeometry>
-        <bufferAttribute attach="attributes-position" args={[positions, 3]} />
+        <bufferAttribute attach="attributes-position" args={[posArr, 3]} />
+        {enhanced && <bufferAttribute attach="attributes-color" args={[colors, 3]} />}
       </bufferGeometry>
-      <pointsMaterial color="#8866ff" size={0.008} transparent opacity={0.12} sizeAttenuation />
+      <pointsMaterial
+        color={enhanced ? undefined : "#8866ff"}
+        vertexColors={enhanced}
+        size={enhanced ? 0.012 : 0.008}
+        transparent
+        opacity={enhanced ? 0.2 : 0.12}
+        sizeAttenuation
+        blending={THREE.AdditiveBlending}
+        depthWrite={false}
+      />
     </points>
+  );
+}
+
+/* ============================================
+   SCAN PLANE — sweeping horizontal glow
+   ============================================ */
+function ScanPlane() {
+  const meshRef = useRef<THREE.Mesh>(null);
+
+  useFrame((state) => {
+    if (!meshRef.current) return;
+    const scanCycle = 8;
+    const scanDuration = 2;
+    const scanT = state.clock.elapsedTime % scanCycle;
+    if (scanT < scanDuration) {
+      const progress = scanT / scanDuration;
+      meshRef.current.position.y = -2 + progress * 4;
+      meshRef.current.visible = true;
+      const mat = meshRef.current.material as THREE.MeshBasicMaterial;
+      mat.opacity = Math.sin(progress * Math.PI) * 0.15;
+    } else {
+      meshRef.current.visible = false;
+    }
+  });
+
+  return (
+    <mesh ref={meshRef} rotation={[Math.PI / 2, 0, 0]} visible={false}>
+      <planeGeometry args={[5, 5]} />
+      <meshBasicMaterial color="#4488ff" transparent opacity={0} side={THREE.DoubleSide} blending={THREE.AdditiveBlending} depthWrite={false} />
+    </mesh>
   );
 }
 
@@ -618,11 +806,12 @@ interface Brain3DProps {
   autoRotate?: boolean;
   showParticles?: boolean;
   showInfluence?: boolean;
+  onStatusChange?: (msg: string) => void;
 }
 
-export default function Brain3D({ regions, className = "", autoRotate = true, showParticles = false, showInfluence = false }: Brain3DProps) {
+export default function Brain3D({ regions, className = "", autoRotate = true, showParticles = false, showInfluence = false, onStatusChange }: Brain3DProps) {
   const [isMobile, setIsMobile] = useState(false);
-  const influenceRef = useRef<InfluenceState>({ positions: [], nearRegions: new Map() });
+  const influenceRef = useRef<InfluenceState>({ positions: [], nearRegions: new Map(), activePulses: [], scanPhase: 0 });
 
   useEffect(() => {
     setIsMobile(window.innerWidth < 768 || "ontouchstart" in window);
@@ -648,7 +837,6 @@ export default function Brain3D({ regions, className = "", autoRotate = true, sh
         }}
         style={{ background: "transparent", touchAction: "pan-y" }}
       >
-        {/* Mobile: minimal scene — just brain mesh + controls */}
         {isMobile ? (
           <MobileScene regions={regions} autoRotate={autoRotate} />
         ) : (
@@ -656,13 +844,16 @@ export default function Brain3D({ regions, className = "", autoRotate = true, sh
             <ambientLight intensity={0.2} />
             <directionalLight position={[3, 6, 4]} intensity={0.9} color="#ffffff" />
             <directionalLight position={[-3, 3, -2]} intensity={0.3} color="#8888ff" />
-            <BrainMesh regions={regions} autoRotate={autoRotate} isMobile={false} />
+            <pointLight position={[0, 0, 0]} intensity={0.15} color="#7c6cf0" distance={4} />
+            <BrainMesh regions={regions} autoRotate={autoRotate} isMobile={false} influenceRef={showInfluence ? influenceRef : undefined} />
             <NeuralPathways regions={regions} />
             <FlowingParticles regions={regions} />
             <RegionNodes regions={regions} influenceRef={showInfluence ? influenceRef : undefined} />
             {showInfluence && <InfluenceIcons regions={regions} influenceRef={influenceRef} />}
             {showInfluence && <InfluenceConnections regions={regions} influenceRef={influenceRef} />}
-            {showParticles && <Particles />}
+            {showInfluence && <ScanPlane />}
+            {showInfluence && <StatusSync influenceRef={influenceRef} onStatusChange={onStatusChange} />}
+            {showParticles && <Particles enhanced={showInfluence} />}
             <OrbitControls
               enableZoom
               enablePan={false}
@@ -679,6 +870,25 @@ export default function Brain3D({ regions, className = "", autoRotate = true, sh
     </div>
     </Brain3DErrorBoundary>
   );
+}
+
+/* Syncs 3D animation state → React status text (runs inside Canvas) */
+function StatusSync({ influenceRef, onStatusChange }: { influenceRef: React.RefObject<InfluenceState>; onStatusChange?: (msg: string) => void }) {
+  const lastMsgIdx = useRef(-1);
+
+  useFrame((state) => {
+    if (!onStatusChange) return;
+    const t = state.clock.elapsedTime;
+
+    // Rotate messages every 3 seconds
+    const msgIdx = Math.floor(t / 3) % SCAN_MESSAGES.length;
+    if (msgIdx !== lastMsgIdx.current) {
+      lastMsgIdx.current = msgIdx;
+      onStatusChange(SCAN_MESSAGES[msgIdx]);
+    }
+  });
+
+  return null;
 }
 
 /* Mobile scene — absolute bare minimum, manually invalidates at ~24fps */
@@ -720,7 +930,7 @@ function MobileScene({ regions, autoRotate }: { regions: BrainRegion[]; autoRota
 /* ============================================
    HERO BRAIN
    ============================================ */
-export function HeroBrain() {
+export function HeroBrain({ onStatusChange }: { onStatusChange?: (msg: string) => void } = {}) {
   const regions: BrainRegion[] = [
     { name: "Decision Making", id: "pfc", role: "Helps viewers decide to take action", position: [0, 0.2, 0.9], activation: 0.85, color: "#ffbb00" },
     { name: "Emotions", id: "amygdala", role: "Creates excitement and urgency", position: [0.4, -0.2, 0.3], activation: 0.82, color: "#ff8800" },
@@ -736,7 +946,7 @@ export function HeroBrain() {
     { name: "Storytelling", id: "temporal", role: "Narrative understanding", position: [1.0, -0.3, 0.8], activation: 0.69, color: "#44aa88" },
   ];
 
-  return <Brain3D regions={regions} className="w-full h-[380px] sm:h-[420px] md:h-[550px]" autoRotate showParticles showInfluence />;
+  return <Brain3D regions={regions} className="w-full h-[380px] sm:h-[420px] md:h-[550px]" autoRotate showParticles showInfluence onStatusChange={onStatusChange} />;
 }
 
 useGLTF.preload("/models/brain-optimized.glb");
