@@ -484,20 +484,30 @@ export async function POST(request: NextRequest) {
 
     return NextResponse.json({ analysis });
   } catch (error: any) {
-    console.error("Profile analysis error:", String(error.message || "").slice(0, 300));
+    console.error("Profile analysis error:", String(error.message || "").slice(0, 500));
     const msg = String(error.message || "");
+
+    // Show the actual error if it's a validation or known error
     const userFacingPatterns = [
       /^File too large/,
       /^No content provided/,
       /^Invalid analysis mode/,
+      /^All LLM providers failed/,
       /^All AI providers failed/,
+      // All validation errors from validateModeInput
+      /mode requires/i,
+      /mode only accepts/i,
+      /mode doesn't accept/i,
+      /^Please (upload|paste)/i,
+      /^Invalid (music|social)/i,
+      /^Only /i,
     ];
     const safeMessage = userFacingPatterns.some(p => p.test(msg))
       ? msg
       : 'Analysis failed. Please try again.';
     return NextResponse.json(
       { error: safeMessage },
-      { status: 500 }
+      { status: msg === 'Analysis failed. Please try again.' ? 500 : 400 }
     );
   }
 }

@@ -263,8 +263,12 @@ export default function Home() {
 
       const res = await fetch("/api/analyze", { method: "POST", body: formData });
       if (!res.ok) {
-        const data = await res.json();
-        throw new Error(data.error || "Analysis failed");
+        let errorMsg = "Analysis failed. Please try again.";
+        try {
+          const data = await res.json();
+          if (data.error) errorMsg = data.error;
+        } catch { /* response wasn't JSON */ }
+        throw new Error(errorMsg);
       }
 
       const data = await res.json();
@@ -301,8 +305,12 @@ export default function Home() {
 
       const res = await fetch("/api/profile", { method: "POST", body: formData });
       if (!res.ok) {
-        const data = await res.json();
-        throw new Error(data.error || "Analysis failed");
+        let errorMsg = "Analysis failed. Please try again.";
+        try {
+          const data = await res.json();
+          if (data.error) errorMsg = data.error;
+        } catch { /* response wasn't JSON */ }
+        throw new Error(errorMsg);
       }
 
       const data = await res.json();

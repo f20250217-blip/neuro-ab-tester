@@ -91,45 +91,54 @@ export async function middleware(request: NextRequest) {
 
     const ip = getClientIp(request);
 
+    let rateLimited = false;
+    let rlRemaining = 5;
+
+    // Try Upstash Redis first
     if (ratelimit) {
-      // Upstash Redis rate limiting (works across all Vercel instances)
-      const { success, remaining, reset } = await ratelimit.limit(ip);
-      if (!success) {
-        const resetIn = Math.max(0, reset - Date.now());
-        return NextResponse.json(
-          { error: 'Too many requests. Please wait a minute before trying again.' },
-          {
-            status: 429,
-            headers: {
-              'Retry-After': Math.ceil(resetIn / 1000).toString(),
-              'X-RateLimit-Remaining': '0',
-            },
-          }
-        );
+      try {
+        const result = await ratelimit.limit(ip);
+        rateLimited = !result.success;
+        rlRemaining = result.remaining;
+        if (rateLimited) {
+          const resetIn = Math.max(0, result.reset - Date.now());
+          return NextResponse.json(
+            { error: 'Too many requests. Please wait a minute before trying again.' },
+            {
+              status: 429,
+              headers: {
+                'Retry-After': Math.ceil(resetIn / 1000).toString(),
+                'X-RateLimit-Remaining': '0',
+              },
+            }
+          );
+        }
+        const response = NextResponse.next();
+        response.headers.set('X-RateLimit-Remaining', rlRemaining.toString());
+        return response;
+      } catch {
+        // Redis failed — fall through to in-memory
       }
-      const response = NextResponse.next();
-      response.headers.set('X-RateLimit-Remaining', remaining.toString());
-      return response;
-    } else {
-      // Fallback: in-memory rate limiting (per-instance only)
-      cleanupRateLimitMap();
-      const { allowed, remaining, resetIn } = memoryRateLimit(ip, 5, 60000);
-      if (!allowed) {
-        return NextResponse.json(
-          { error: 'Too many requests. Please wait a minute before trying again.' },
-          {
-            status: 429,
-            headers: {
-              'Retry-After': Math.ceil(resetIn / 1000).toString(),
-              'X-RateLimit-Remaining': '0',
-            },
-          }
-        );
-      }
-      const response = NextResponse.next();
-      response.headers.set('X-RateLimit-Remaining', remaining.toString());
-      return response;
     }
+
+    // Fallback: in-memory rate limiting
+    cleanupRateLimitMap();
+    const { allowed, remaining, resetIn } = memoryRateLimit(ip, 5, 60000);
+    if (!allowed) {
+      return NextResponse.json(
+        { error: 'Too many requests. Please wait a minute before trying again.' },
+        {
+          status: 429,
+          headers: {
+            'Retry-After': Math.ceil(resetIn / 1000).toString(),
+            'X-RateLimit-Remaining': '0',
+          },
+        }
+      );
+    }
+    const response = NextResponse.next();
+    response.headers.set('X-RateLimit-Remaining', remaining.toString());
+    return response;
   }
 
   return NextResponse.next();
