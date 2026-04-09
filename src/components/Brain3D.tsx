@@ -40,15 +40,60 @@ const INSIGHT_LABELS = [
 
 const INSIGHT_REGIONS = ["acc", "nac", "amygdala", "hippocampus"]; // matched to labels
 
-function getPhase(t: number): { name: PhaseName; progress: number; cycleIndex: number } {
+// Smooth hermite interpolation — no hard edges
+function smoothstep(edge0: number, edge1: number, x: number): number {
+  const t = Math.max(0, Math.min(1, (x - edge0) / (edge1 - edge0)));
+  return t * t * (3 - 2 * t);
+}
+
+const BLEND = 0.6; // seconds to crossfade between phases
+
+interface PhaseInfo {
+  name: PhaseName;
+  progress: number;
+  cycleIndex: number;
+  // Smooth 0-1 intensities — crossfade over BLEND seconds at edges
+  calm: number;
+  influence: number;
+  overload: number;
+  insight: number;
+}
+
+function getPhase(t: number): PhaseInfo {
   const cycleIndex = Math.floor(t / CYCLE);
   const ct = t % CYCLE;
+
+  // Determine dominant phase name
+  let name: PhaseName = "calm";
+  let progress = 0;
   for (const p of PHASE_TIMINGS) {
     if (ct >= p.start && ct < p.end) {
-      return { name: p.name, progress: (ct - p.start) / (p.end - p.start), cycleIndex };
+      name = p.name;
+      progress = (ct - p.start) / (p.end - p.start);
+      break;
     }
   }
-  return { name: "calm", progress: 0, cycleIndex };
+
+  // Smooth intensities with crossfade at boundaries
+  // Each phase fades in over BLEND seconds from its start, fades out over BLEND seconds before its end
+  const phaseIntensity = (start: number, end: number) => {
+    const fadeIn = smoothstep(start, start + BLEND, ct);
+    const fadeOut = 1 - smoothstep(end - BLEND, end, ct);
+    return fadeIn * fadeOut;
+  };
+
+  // Handle cycle wrap: calm spans 0-2.5 but also needs fade-in from end of cycle
+  const calmWrapIn = 1 - smoothstep(0, BLEND, ct); // fade in from cycle restart
+  const calmBase = phaseIntensity(0, 2.5);
+  const calmFromEnd = smoothstep(CYCLE - BLEND, CYCLE, ct); // blend from insight→calm at cycle end
+
+  return {
+    name, progress, cycleIndex,
+    calm: Math.max(calmBase, calmWrapIn, calmFromEnd),
+    influence: phaseIntensity(2.5, 5),
+    overload: phaseIntensity(5, 7.5),
+    insight: phaseIntensity(7.5, 10),
+  };
 }
 
 interface InfluenceState {
@@ -248,18 +293,25 @@ function BrainMesh({ regions, autoRotate, isMobile, influenceRef }: { regions: B
     return m;
   }, [regions]);
 
+  // Smooth lerp target refs — persist across frames for buttery transitions
+  const rotSpeedRef = useRef(0.001);
+  const tiltScaleRef = useRef(0.06);
+
   useFrame((state) => {
     const t = state.clock.elapsedTime;
-    const { name: phase, progress, cycleIndex } = getPhase(t);
+    const ph = getPhase(t);
 
     if (groupRef.current) {
-      // Phase-driven rotation speed
-      const rotSpeeds: Record<PhaseName, number> = { calm: 0.001, influence: 0.003, overload: 0.008, insight: 0 };
-      if (autoRotate) groupRef.current.rotation.y += rotSpeeds[phase];
+      // Smooth rotation speed — blend by intensities, lerp toward target
+      const targetRot = 0.001 * ph.calm + 0.003 * ph.influence + 0.008 * ph.overload + 0.0005 * ph.insight;
+      rotSpeedRef.current += (targetRot - rotSpeedRef.current) * 0.08;
+      if (autoRotate) groupRef.current.rotation.y += rotSpeedRef.current;
+
       if (!isMobile) {
-        const tiltScale = phase === "insight" ? 0.02 : 0.06;
-        const targetX = state.pointer.y * tiltScale;
-        const targetZ = -state.pointer.x * tiltScale;
+        const targetTilt = 0.06 * (1 - ph.insight * 0.7);
+        tiltScaleRef.current += (targetTilt - tiltScaleRef.current) * 0.05;
+        const targetX = state.pointer.y * tiltScaleRef.current;
+        const targetZ = -state.pointer.x * tiltScaleRef.current;
         groupRef.current.rotation.x += (targetX - groupRef.current.rotation.x) * 0.03;
         groupRef.current.rotation.z += (targetZ - groupRef.current.rotation.z) * 0.03;
       }
@@ -269,32 +321,23 @@ function BrainMesh({ regions, autoRotate, isMobile, influenceRef }: { regions: B
       u.uTime.value = t;
       u.uCamPos.value.copy(state.camera.position);
 
-      // Scan sweep during INFLUENCE phase
-      if (phase === "influence") {
-        u.uScanY.value = -2 + progress * 4;
-        u.uScanIntensity.value = Math.sin(progress * Math.PI);
+      // Scan sweep — driven by influence intensity
+      if (ph.influence > 0.05) {
+        u.uScanY.value = -2 + ph.progress * 4;
+        u.uScanIntensity.value += (Math.sin(ph.progress * Math.PI) * ph.influence - u.uScanIntensity.value) * 0.12;
       } else {
-        u.uScanIntensity.value = Math.max(0, u.uScanIntensity.value - 0.08);
+        u.uScanIntensity.value += (0 - u.uScanIntensity.value) * 0.06;
       }
 
-      // Overload flicker
-      if (phase === "overload") {
-        const ramp = Math.min(1, progress * 2); // ramp up in first half
-        u.uOverload.value += (ramp * 0.7 - u.uOverload.value) * 0.1;
-      } else {
-        u.uOverload.value *= 0.9;
-      }
+      // Overload — smooth ramp tied to intensity
+      const targetOverload = ph.overload * 0.7;
+      u.uOverload.value += (targetOverload - u.uOverload.value) * 0.08;
 
-      // Insight spotlight
-      if (phase === "insight") {
-        const spotRegionId = INSIGHT_REGIONS[cycleIndex % INSIGHT_REGIONS.length];
-        const spotPos = regionMap.get(spotRegionId);
-        if (spotPos) u.uSpotlightPos.value.copy(spotPos);
-        const fadeIn = Math.min(1, progress * 4); // snap on
-        u.uSpotlightIntensity.value += (fadeIn - u.uSpotlightIntensity.value) * 0.15;
-      } else {
-        u.uSpotlightIntensity.value *= 0.85;
-      }
+      // Spotlight — smooth on/off
+      const spotRegionId = INSIGHT_REGIONS[ph.cycleIndex % INSIGHT_REGIONS.length];
+      const spotPos = regionMap.get(spotRegionId);
+      if (spotPos) u.uSpotlightPos.value.copy(spotPos);
+      u.uSpotlightIntensity.value += (ph.insight - u.uSpotlightIntensity.value) * 0.08;
 
       // Pulse from influence hits
       const inf = influenceRef?.current;
@@ -542,22 +585,27 @@ function InfluenceIcons({ regions, influenceRef }: { regions: BrainRegion[]; inf
 
   const ease = (t: number) => t < 0.5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2;
 
+  // Per-icon smoothed state — persists across frames for buttery lerps
+  const iconState = useRef(INFLUENCE_SOURCES.map(() => ({ opacity: 0, scale: 0.01, pos: new THREE.Vector3(0, 10, 0) })));
+
   useFrame((state) => {
     if (!groupRef.current) return;
     const t = state.clock.elapsedTime;
-    const { name: phase, progress } = getPhase(t);
+    const ph = getPhase(t);
     const nearRegions = new Map<string, number>();
     const positions: THREE.Vector3[] = [];
+    const lerpSpeed = 0.1; // how fast icons smoothly move between targets
 
     groupRef.current.children.forEach((child, i) => {
       const src = INFLUENCE_SOURCES[i];
       if (!src) return;
       const sprite = child as THREE.Sprite;
       const mat = sprite.material as THREE.SpriteMaterial;
+      const is = iconState.current[i];
 
-      // Orbital position (always computed)
-      const speed = phase === "overload" ? src.orbitSpeed * 3 : src.orbitSpeed;
-      const angle = t * speed;
+      // Compute orbit with smooth speed blending
+      const speedMul = 1 + ph.overload * 2; // smooth ramp via overload intensity
+      const angle = t * src.orbitSpeed * speedMul;
       const ox = Math.cos(angle) * src.orbitRadius;
       const oz = Math.sin(angle) * src.orbitRadius;
       const oy = src.heightOffset + Math.sin(angle * 0.7) * 0.3;
@@ -567,91 +615,114 @@ function InfluenceIcons({ regions, influenceRef }: { regions: BrainRegion[]; inf
 
       const targetPos = regionMap.get(src.targetRegions[0]) || new THREE.Vector3();
 
-      if (phase === "calm") {
-        // Hidden — scale to 0, far away
-        child.position.copy(orbitPos.multiplyScalar(1.5));
-        sprite.scale.setScalar(0.01);
-        mat.opacity = 0;
-      } else if (phase === "influence") {
-        // Staggered appearance: icon i appears at progress = i/6
-        const appearAt = i / INFLUENCE_SOURCES.length;
-        const localP = Math.max(0, (progress - appearAt) / (1 - appearAt));
+      // Compute target position, opacity, scale based on smooth phase intensities
+      let targetPosVec = orbitPos.clone();
+      let targetOpacity = 0;
+      let targetScale = 0.01;
 
-        if (localP <= 0) {
-          child.position.copy(orbitPos.multiplyScalar(1.5));
-          sprite.scale.setScalar(0.01);
-          mat.opacity = 0;
-        } else if (localP < 0.5) {
-          // Appear at orbit, fade in
-          const fadeIn = ease(localP * 2);
-          child.position.copy(orbitPos);
-          sprite.scale.setScalar(0.35 * fadeIn);
-          mat.opacity = fadeIn * 0.8;
-        } else {
-          // Dive toward brain
-          const diveP = ease((localP - 0.5) * 2);
-          child.position.lerpVectors(orbitPos, targetPos, diveP);
-          sprite.scale.setScalar(0.35 - diveP * 0.1);
-          mat.opacity = 0.8 + diveP * 0.2;
+      // Visibility = influence + overload + insight (not calm)
+      const visibility = Math.min(1, ph.influence + ph.overload + ph.insight);
 
-          // Trigger pulse on arrival
-          if (diveP > 0.9 && diveP < 0.98) {
-            const last = influenceRef.current.activePulses[influenceRef.current.activePulses.length - 1];
-            if (!last || t - last.time > 0.2) {
-              influenceRef.current.activePulses.push({ center: targetPos.clone(), color: new THREE.Color(src.color), time: t });
-            }
-          }
-
-          if (diveP > 0.5) {
-            for (const rid of src.targetRegions) nearRegions.set(rid, diveP);
-          }
-        }
-      } else if (phase === "overload") {
-        // Rapid orbit + repeated dives
-        const rapidCycle = (progress * 3 + i * 0.4) % 1; // fast cycle
-        if (rapidCycle < 0.6) {
-          // Orbit fast
-          child.position.copy(orbitPos);
-          sprite.scale.setScalar(0.3 + Math.sin(t * 8 + i) * 0.05);
-          mat.opacity = 0.7 + Math.sin(t * 12 + i * 2) * 0.2;
-        } else {
-          // Rapid dive
-          const dP = ease((rapidCycle - 0.6) / 0.4);
-          child.position.lerpVectors(orbitPos, targetPos, dP);
-          sprite.scale.setScalar(0.25);
-          mat.opacity = 1.0;
-
-          // Trigger rapid pulses
-          if (dP > 0.85) {
-            const last = influenceRef.current.activePulses[influenceRef.current.activePulses.length - 1];
-            if (!last || t - last.time > 0.15) {
-              influenceRef.current.activePulses.push({ center: targetPos.clone(), color: new THREE.Color(src.color), time: t });
-            }
-          }
-          for (const rid of src.targetRegions) nearRegions.set(rid, Math.max(nearRegions.get(rid) || 0, dP));
-        }
+      if (visibility < 0.01) {
+        // Fully calm — hide at orbit distance
+        targetPosVec.copy(orbitPos).multiplyScalar(1.3);
+        targetOpacity = 0;
+        targetScale = 0.01;
       } else {
-        // INSIGHT — freeze near target, dim non-spotlight icons
-        const spotIdx = influenceRef.current.cycleIndex % INSIGHT_REGIONS.length;
-        const isSpotlit = src.targetRegions.includes(INSIGHT_REGIONS[spotIdx]);
-        child.position.copy(targetPos.clone().add(orbitPos.normalize().multiplyScalar(0.4)));
-        sprite.scale.setScalar(isSpotlit ? 0.4 + Math.sin(t * 2) * 0.05 : 0.15);
-        mat.opacity = isSpotlit ? 1.0 : 0.15;
+        // INFLUENCE: staggered appear + dive
+        if (ph.influence > 0.1) {
+          const appearAt = i / INFLUENCE_SOURCES.length;
+          const localP = Math.max(0, (ph.progress - appearAt) / (1 - appearAt));
 
-        if (isSpotlit) {
-          for (const rid of src.targetRegions) nearRegions.set(rid, 1.0);
+          if (localP < 0.5) {
+            const fadeIn = ease(Math.min(1, localP * 2));
+            targetPosVec.copy(orbitPos);
+            targetOpacity = Math.max(targetOpacity, fadeIn * 0.8 * ph.influence);
+            targetScale = Math.max(targetScale, 0.35 * fadeIn * ph.influence);
+          } else {
+            const diveP = ease((localP - 0.5) * 2);
+            targetPosVec.lerpVectors(orbitPos, targetPos, diveP);
+            targetOpacity = Math.max(targetOpacity, (0.8 + diveP * 0.2) * ph.influence);
+            targetScale = Math.max(targetScale, (0.35 - diveP * 0.1) * ph.influence);
+
+            if (diveP > 0.9 && diveP < 0.98) {
+              const last = influenceRef.current.activePulses[influenceRef.current.activePulses.length - 1];
+              if (!last || t - last.time > 0.2) {
+                influenceRef.current.activePulses.push({ center: targetPos.clone(), color: new THREE.Color(src.color), time: t });
+              }
+            }
+            if (diveP > 0.5) {
+              for (const rid of src.targetRegions) nearRegions.set(rid, Math.max(nearRegions.get(rid) || 0, diveP * ph.influence));
+            }
+          }
+        }
+
+        // OVERLOAD: rapid dive cycles, blended in
+        if (ph.overload > 0.1) {
+          const rapidCycle = (ph.progress * 3 + i * 0.4) % 1;
+          let oPos: THREE.Vector3;
+          let oOpacity: number;
+          let oScale: number;
+
+          if (rapidCycle < 0.6) {
+            oPos = orbitPos.clone();
+            oScale = 0.3 + Math.sin(t * 8 + i) * 0.05;
+            oOpacity = 0.7 + Math.sin(t * 12 + i * 2) * 0.2;
+          } else {
+            const dP = ease((rapidCycle - 0.6) / 0.4);
+            oPos = orbitPos.clone().lerp(targetPos, dP);
+            oScale = 0.25;
+            oOpacity = 1.0;
+
+            if (dP > 0.85) {
+              const last = influenceRef.current.activePulses[influenceRef.current.activePulses.length - 1];
+              if (!last || t - last.time > 0.15) {
+                influenceRef.current.activePulses.push({ center: targetPos.clone(), color: new THREE.Color(src.color), time: t });
+              }
+            }
+            for (const rid of src.targetRegions) nearRegions.set(rid, Math.max(nearRegions.get(rid) || 0, dP * ph.overload));
+          }
+
+          // Blend overload contribution
+          targetPosVec.lerp(oPos, ph.overload);
+          targetOpacity = Math.max(targetOpacity, oOpacity * ph.overload);
+          targetScale = Math.max(targetScale, oScale * ph.overload);
+        }
+
+        // INSIGHT: freeze near target, spotlight one
+        if (ph.insight > 0.1) {
+          const spotIdx = ph.cycleIndex % INSIGHT_REGIONS.length;
+          const isSpotlit = src.targetRegions.includes(INSIGHT_REGIONS[spotIdx]);
+          const nearTarget = targetPos.clone().add(orbitPos.clone().normalize().multiplyScalar(0.4));
+
+          targetPosVec.lerp(nearTarget, ph.insight);
+          const insightOpacity = isSpotlit ? 1.0 : 0.15;
+          const insightScale = isSpotlit ? 0.4 + Math.sin(t * 2) * 0.05 : 0.15;
+          targetOpacity = targetOpacity * (1 - ph.insight) + insightOpacity * ph.insight;
+          targetScale = targetScale * (1 - ph.insight) + insightScale * ph.insight;
+
+          if (isSpotlit) {
+            for (const rid of src.targetRegions) nearRegions.set(rid, Math.max(nearRegions.get(rid) || 0, ph.insight));
+          }
         }
       }
 
-      positions.push(child.position.clone());
+      // Smooth lerp all values
+      is.pos.lerp(targetPosVec, lerpSpeed);
+      is.opacity += (targetOpacity - is.opacity) * lerpSpeed;
+      is.scale += (targetScale - is.scale) * lerpSpeed;
+
+      child.position.copy(is.pos);
+      sprite.scale.setScalar(Math.max(0.001, is.scale));
+      mat.opacity = Math.max(0, is.opacity);
+      positions.push(is.pos.clone());
     });
 
-    const { cycleIndex } = getPhase(t);
     influenceRef.current.positions = positions;
     influenceRef.current.nearRegions = nearRegions;
-    influenceRef.current.phase = phase;
-    influenceRef.current.phaseProgress = progress;
-    influenceRef.current.cycleIndex = cycleIndex;
+    influenceRef.current.phase = ph.name;
+    influenceRef.current.phaseProgress = ph.progress;
+    influenceRef.current.cycleIndex = ph.cycleIndex;
   });
 
   return (
@@ -807,31 +878,43 @@ function Particles({ enhanced }: { enhanced?: boolean }) {
 }
 
 /* ============================================
-   SCAN PLANE — phase-synced sweep
+   SCAN PLANE — smooth intensity-driven sweep
    ============================================ */
 function ScanPlane() {
   const meshRef = useRef<THREE.Mesh>(null);
+  const opRef = useRef(0);
+  const colorRef = useRef(new THREE.Color(0x4488ff));
 
   useFrame((state) => {
     if (!meshRef.current) return;
-    const { name: phase, progress } = getPhase(state.clock.elapsedTime);
+    const t = state.clock.elapsedTime;
+    const ph = getPhase(t);
     const mat = meshRef.current.material as THREE.MeshBasicMaterial;
 
-    if (phase === "influence") {
-      meshRef.current.position.y = -2 + progress * 4;
-      meshRef.current.visible = true;
-      mat.opacity = Math.sin(progress * Math.PI) * 0.15;
-    } else if (phase === "overload") {
-      // Rapid multi-scan
-      const rapidY = Math.sin(state.clock.elapsedTime * 6) * 2;
-      meshRef.current.position.y = rapidY;
-      meshRef.current.visible = true;
-      mat.opacity = 0.08 + Math.abs(Math.sin(state.clock.elapsedTime * 8)) * 0.1;
-      mat.color.setHex(0xff4444); // red during overload
-    } else {
-      meshRef.current.visible = false;
-      mat.color.setHex(0x4488ff); // reset to blue
+    // Target opacity and position based on blended intensities
+    let targetOp = 0;
+
+    if (ph.influence > 0.05) {
+      meshRef.current.position.y = -2 + ph.progress * 4;
+      targetOp = Math.sin(ph.progress * Math.PI) * 0.15 * ph.influence;
     }
+    if (ph.overload > 0.05) {
+      meshRef.current.position.y = Math.sin(t * 6) * 2;
+      targetOp = Math.max(targetOp, (0.08 + Math.abs(Math.sin(t * 8)) * 0.1) * ph.overload);
+    }
+
+    // Smooth color blend: blue → red based on overload
+    colorRef.current.setRGB(
+      0.27 + ph.overload * 0.73,
+      0.53 * (1 - ph.overload * 0.7),
+      1.0 * (1 - ph.overload * 0.7),
+    );
+    mat.color.copy(colorRef.current);
+
+    // Smooth opacity
+    opRef.current += (targetOp - opRef.current) * 0.12;
+    mat.opacity = opRef.current;
+    meshRef.current.visible = opRef.current > 0.005;
   });
 
   return (

@@ -394,25 +394,25 @@ export default function Home() {
                 <HeroBrain onStatusChange={handleScanStatus} onPhaseChange={handlePhaseChange} />
                 <div className="absolute inset-x-0 bottom-0 h-32 sm:h-64 bg-gradient-to-t from-[#050508] via-[#050508]/80 to-transparent" />
 
-                {/* INSIGHT overlay — bold label */}
-                {heroPhase === "insight" && insightLabel && (
-                  <div className="absolute inset-0 flex items-center justify-center pointer-events-none z-20">
-                    <div key={insightLabel} className="animate-[insightReveal_0.6s_cubic-bezier(0.16,1,0.3,1)] text-center">
-                      <div className="text-lg sm:text-2xl md:text-3xl font-bold font-mono tracking-[0.15em] text-red-400 drop-shadow-[0_0_20px_rgba(255,60,60,0.5)]">
-                        {insightLabel}
-                      </div>
-                      <div className="mt-1 h-[2px] mx-auto bg-gradient-to-r from-transparent via-red-500 to-transparent animate-pulse" style={{ width: "80%" }} />
+                {/* INSIGHT overlay — bold label, CSS transition */}
+                <div className={`absolute inset-0 flex items-center justify-center pointer-events-none z-20 transition-all duration-700 ease-out ${
+                  heroPhase === "insight" && insightLabel ? "opacity-100 scale-100" : "opacity-0 scale-90"
+                }`}>
+                  <div className="text-center">
+                    <div className="text-lg sm:text-2xl md:text-3xl font-bold font-mono tracking-[0.15em] text-red-400 drop-shadow-[0_0_20px_rgba(255,60,60,0.5)]">
+                      {insightLabel || ""}
                     </div>
+                    <div className="mt-1 h-[2px] mx-auto bg-gradient-to-r from-transparent via-red-500 to-transparent animate-pulse" style={{ width: "80%" }} />
                   </div>
-                )}
+                </div>
 
-                {/* Overload edge vignette */}
-                {heroPhase === "overload" && (
-                  <div className="absolute inset-0 pointer-events-none z-10 rounded-lg" style={{
-                    boxShadow: "inset 0 0 80px 20px rgba(255,40,40,0.08)",
-                    animation: "overloadFlash 0.5s ease-in-out infinite alternate",
-                  }} />
-                )}
+                {/* Overload edge vignette — CSS transition */}
+                <div className={`absolute inset-0 pointer-events-none z-10 rounded-lg transition-opacity duration-500 ${
+                  heroPhase === "overload" ? "opacity-100" : "opacity-0"
+                }`} style={{
+                  boxShadow: "inset 0 0 80px 20px rgba(255,40,40,0.08)",
+                  animation: heroPhase === "overload" ? "overloadFlash 0.5s ease-in-out infinite alternate" : "none",
+                }} />
               </div>
               <div className="relative -mt-12 sm:-mt-36 z-10 space-y-4 sm:space-y-5 px-2 sm:px-0">
                 {/* Live scan status */}
