@@ -10,20 +10,22 @@ interface Props {
 
 interface State {
   hasError: boolean;
+  errorMsg: string;
 }
 
 export default class ErrorBoundary extends React.Component<Props, State> {
   constructor(props: Props) {
     super(props);
-    this.state = { hasError: false };
+    this.state = { hasError: false, errorMsg: "" };
   }
 
-  static getDerivedStateFromError() {
-    return { hasError: true };
+  static getDerivedStateFromError(error: Error) {
+    return { hasError: true, errorMsg: error?.message || "Unknown error" };
   }
 
-  componentDidCatch(error: Error) {
-    console.error("ErrorBoundary caught:", error.message);
+  componentDidCatch(error: Error, errorInfo: React.ErrorInfo) {
+    console.error("ErrorBoundary caught:", error.message, error.stack);
+    console.error("Component stack:", errorInfo.componentStack);
   }
 
   render() {
@@ -36,10 +38,11 @@ export default class ErrorBoundary extends React.Component<Props, State> {
             </svg>
           </div>
           <h2 className="text-xl font-bold text-[#f0f0f8] mb-2">Something went wrong</h2>
-          <p className="text-sm text-[#7a7a98] mb-6 max-w-sm">The results couldn&apos;t be displayed. This can happen on some devices due to memory constraints.</p>
+          <p className="text-sm text-[#7a7a98] mb-2 max-w-sm">The results couldn&apos;t be displayed.</p>
+          <p className="text-xs text-[#ff4060] mb-6 max-w-md font-mono break-all">{this.state.errorMsg}</p>
           <button
             onClick={() => {
-              this.setState({ hasError: false });
+              this.setState({ hasError: false, errorMsg: "" });
               this.props.onReset?.();
             }}
             className="px-6 py-3 rounded-xl bg-[#7c6cf0] text-white font-semibold text-sm hover:bg-[#8d7ff8] transition-colors"

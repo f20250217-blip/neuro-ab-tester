@@ -131,7 +131,12 @@ export default function ShareCard({ analysis, mode, color }: ShareCardProps) {
   /* ── Result share URL (clean path — triggers OG preview on all platforms) ── */
 
   const archKey = arch.name.toLowerCase().replace("the ", "");
-  const resultId = encodeResult({ score, type: archKey, mode, insight });
+  let resultId: string;
+  try {
+    resultId = encodeResult({ score, type: archKey, mode, insight });
+  } catch {
+    resultId = encodeResult({ score, type: archKey, mode, insight: "" });
+  }
   const resultUrl = `https://www.neurotest.live/result/${resultId}`;
 
   /* ── Share text — includes link with OG preview ── */
